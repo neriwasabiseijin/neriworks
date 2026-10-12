@@ -1,0 +1,49 @@
+/*
+ * ミニゲーム共通：システムバー（画面上部の帯）
+ * 各ゲームの <head> で読み込む：<link rel="stylesheet" href="../common/system.css">
+ * ゲーム本体は --mg-bar-h の分だけ上を空けて配置すること（README のルール参照）。
+ */
+:root { --mg-bar-h: calc(48px + env(safe-area-inset-top, 0px)); }
+
+.mg-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  height: var(--mg-bar-h); padding: env(safe-area-inset-top, 0px) 0 0;
+  display: flex; align-items: center; justify-content: space-between;
+  pointer-events: none; /* 帯そのものはタップを通す。ボタンだけ反応 */
+}
+.mg-bar-side { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+
+/* システムボタン共通の見た目（電源・BGM・オプションなど） */
+.mg-bar .mg-btn {
+  position: static; margin: 0; flex: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 36px; height: 36px; padding: 0 10px; border: 0; border-radius: 18px;
+  background: rgba(20, 16, 28, .72); color: #fff; box-shadow: 0 0 0 1px rgba(255, 255, 255, .18);
+  font: 700 14px/1 system-ui, sans-serif; text-decoration: none; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.mg-bar .mg-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.mg-bar .mg-btn[aria-pressed="false"] { opacity: .55; }
+.mg-bar .mg-btn svg { width: 16px; height: 16px; flex: none; }
+
+/* 電源ボタン：1回目で「やめる？」に変わり、2回目で終了 */
+.mg-power .mg-ask { display: none; }
+.mg-power.armed { background: #d9364a; box-shadow: 0 0 0 2px rgba(255, 255, 255, .5); }
+.mg-power.armed .mg-ask { display: inline; }
+
+/* 電源OFF演出（ブラウン管が消えるように） */
+.mg-off { position: fixed; inset: 0; z-index: 2147483647; pointer-events: all; }
+.mg-off > div { position: absolute; left: 0; right: 0; background: #000; }
+.mg-off .mg-top { top: 0; height: 0; }
+.mg-off .mg-bot { bottom: 0; height: 0; }
+.mg-off .mg-line { top: 50%; left: 50%; width: 100%; height: 4px; margin-top: -2px; background: #fff; transform: translateX(-50%);
+  box-shadow: 0 0 18px 6px rgba(200, 230, 255, .8); opacity: 0; border-radius: 4px; }
+.mg-off .mg-white { inset: 0; background: #fff; opacity: 0; }
+
+/* 起動時の黒い幕（system.js が描画前に付ける） */
+html.mg-booting { background: #000; }
+html.mg-booting::after {
+  content: ""; position: fixed; inset: 0; z-index: 2147483647; background: #000; pointer-events: none;
+  opacity: 1; transition: opacity .45s ease-out;
+}
+html.mg-booted::after { opacity: 0; }

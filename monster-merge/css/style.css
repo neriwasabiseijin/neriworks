@@ -1,0 +1,120 @@
+/* Layout: one portrait 360x640 canvas scaled to fit; HTML overlays for title, level-up cards and result.
+   Single dark "summoning altar" look on purpose: deep indigo night, gold for rewards, violet for curses. */
+:root {
+  --bg: #120f24;
+  --panel: #1f1a3a;
+  --panel-2: #2a2350;
+  --ink: #f5efff;
+  --muted: #a99fd0;
+  --gold: #ffc53d;
+  --curse: #b26bff;
+  --line: #3b3270;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Meiryo", system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app {
+  position: fixed;
+  inset: var(--mg-bar-h, 0px) 0 0 0; /* 上はシステムバー（../common/system.css）の分を空ける */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+#stage { position: relative; }
+canvas { display: block; width: 100%; height: 100%; border-radius: 14px; }
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 16px;
+  text-align: center;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(3px);
+  border-radius: 14px;
+}
+.overlay p.sub { margin: -6px 0 0; color: var(--gold); font-weight: 800; letter-spacing: .2em; font-size: 13px; }
+.overlay h1, .overlay h2, button { font-family: "Mochiy Pop One", "M PLUS Rounded 1c", sans-serif; font-weight: 400; }
+.overlay h1 .t1 { font-size: 1.25em; }
+.overlay h1 { line-height: 1.15; margin: 0; font-size: 34px; letter-spacing: .04em; color: var(--gold); text-shadow: 0 3px 0 #6b3f00; }
+.overlay h2 { margin: 0; font-size: 26px; color: var(--gold); }
+.overlay p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.overlay .big { font-size: 44px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.chain { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 300px; }
+.chain img { width: 34px; height: 34px; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+button {
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #2a1700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #8a5a00;
+}
+button.sub { background: var(--panel-2); color: var(--ink); box-shadow: 0 3px 0 var(--line); }
+button:active { transform: translateY(2px); box-shadow: none; }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+#resMon { width: 120px; height: 120px; }
+.share { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.share #shareBtn { flex-basis: 100%; max-width: 230px; }
+button.sns { width: 56px; height: 44px; padding: 0; font-size: 14px; border-radius: 14px; color: #fff; }
+button.sns.x { background: #111; box-shadow: 0 3px 0 #000; font-size: 20px; }
+button.sns.line { background: #06c755; box-shadow: 0 3px 0 #04883a; font-size: 13px; }
+button.sns.save { background: var(--panel-2); box-shadow: 0 3px 0 var(--line); font-size: 13px; }
+#resUps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+#resUps span { font-size: 12px; background: var(--panel-2); border-radius: 999px; padding: 3px 9px; color: var(--ink); }
+#levelup .cards { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 310px; }
+.card {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--line), 0 4px 0 #0a0816;
+  font-size: 14px;
+  font-weight: 400;
+}
+.card:hover { box-shadow: 0 0 0 2px var(--gold), 0 4px 0 #0a0816; }
+.card img { width: 56px; height: 56px; }
+.card b { display: block; font-size: 16px; color: var(--gold); }
+.card small { display: block; color: var(--muted); font-size: 12px; line-height: 1.45; margin-top: 2px; min-width: 0; }
+#levelup { animation: lvFade .3s ease-out both; }
+#levelup h2 { animation: lvPop .45s cubic-bezier(.2,.9,.3,1.4) both; }
+#levelup .card { animation: cardIn .4s cubic-bezier(.2,.9,.3,1.25) both; }
+#levelup .card:nth-child(1) { animation-delay: .12s; }
+#levelup .card:nth-child(2) { animation-delay: .2s; }
+#levelup .card:nth-child(3) { animation-delay: .28s; }
+#levelup.locked .card { pointer-events: none; }
+@keyframes lvFade { from { opacity: 0; } }
+@keyframes lvPop { from { opacity: 0; transform: scale(.6); } }
+@keyframes cardIn { from { opacity: 0; transform: translateY(28px) scale(.95); } }
+#musicBtn { font-size: 16px; } /* 位置と見た目は共通のシステムバー（../common/system.css）に従う */
+#musicBtn[aria-pressed="false"] { text-decoration: line-through; }
+#toast {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 14px;
+}
+@media (prefers-reduced-motion: reduce) { button:active { transform: none; } #levelup, #levelup h2, #levelup .card { animation: none; } }
+.overlay p.ver { position: absolute; bottom: 10px; left: 0; right: 0; font-size: 11px; color: var(--muted); opacity: .6; letter-spacing: .05em; }
