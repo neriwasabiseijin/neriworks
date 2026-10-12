@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>まるもんえぼりゅーしょん</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Mochiy+Pop+One&display=swap">
+<!-- shared system bar: power (top-left) + BGM (top-right), see ../common/README.md -->
+<link rel="stylesheet" href="../common/system.css">
+<script src="../common/system.js" data-frame="#stage" data-right="#musicBtn"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="title" class="overlay">
+      <h1><span class="t1">まるもん</span><br>えぼりゅーしょん</h1>
+      <p class="sub">めざせキングドラゴン</p>
+      <div class="chain" id="titleChain"></div>
+      <p>同じモンスターがくっつくと進化。<br>スコアがたまるとレベルアップして、能力を1つ選べます。<br>「のろいの岩」は予告のあとに降ってきます。進化の衝撃で砕こう。</p>
+      <p>スマホ：ドラッグして指をはなす<br>PC：マウスでクリック ／ ←→ と Space</p>
+      <p id="titleBest"></p>
+      <div class="btns"><button id="startBtn">あそぶ</button></div>
+      <p class="ver">ver1.0.0</p>
+    </div>
+    <div id="levelup" class="overlay" hidden>
+      <h2 id="lvTitle">レベルアップ！</h2>
+      <p>能力を1つ選んでください</p>
+      <div class="cards" id="cards"></div>
+    </div>
+    <div id="result" class="overlay" hidden>
+      <h2>おしまい！</h2>
+      <img id="resMon" alt="">
+      <p id="resMonName"></p>
+      <div class="big" id="resScore">0</div>
+      <div id="resUps"></div>
+      <p id="resBest"></p>
+      <div class="btns">
+        <button id="retryBtn">もう一度</button>
+      </div>
+      <div class="share" id="share">
+        <button id="shareBtn" class="sub" hidden>シェアする</button>
+        <button id="xBtn" class="sns x" aria-label="Xでポスト">𝕏</button>
+        <button id="lineBtn" class="sns line" aria-label="LINEで送る">LINE</button>
+        <button id="saveBtn" class="sns save" aria-label="画像を保存">保存</button>
+      </div>
+    </div>
+    <button id="musicBtn" aria-pressed="true" aria-label="BGMのオンオフ">♪</button>
+    <div id="toast" hidden></div>
+  </div>
+</div>
+<!-- scripts share one global scope and must load in this order -->
+<script src="js/lib/matter.min.js"></script>
+<script src="js/data/assets.js"></script>
+<script src="js/core/config.js"></script>
+<script src="js/core/random.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/canvas.js"></script>
+<script src="js/media/images.js"></script>
+<script src="js/media/sfx.js"></script>
+<script src="js/media/music.js"></script>
+<script src="js/game/state.js"></script>
+<script src="js/game/bodies.js"></script>
+<script src="js/game/abilities.js"></script>
+<script src="js/game/spawn.js"></script>
+<script src="js/game/levelup.js"></script>
+<script src="js/view/cutin.js"></script>
+<script src="js/game/update.js"></script>
+<script src="js/view/render.js"></script>
+<script src="js/view/screens.js"></script>
+<script src="js/view/share.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
