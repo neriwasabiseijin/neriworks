@@ -17,7 +17,7 @@ function openLevelUp() {
     const u = UPGRADES[k], nl = lv(k) + 1;
     const b = document.createElement("button");
     b.className = "card"; b.id = "card" + i;
-    const im = document.createElement("img"); im.src = imgURL(img["up_" + k]); im.alt = "";
+    const im = document.createElement("img"); im.src = imgURL(img["up_" + k] || (img["up_" + k] = drawUpIcon(k))); im.alt = "";
     const tx = document.createElement("span"); tx.style.minWidth = "0";
     const nm = document.createElement("b"); nm.textContent = `${i + 1}. ${u.name}` + (u.max > 1 ? `  Lv${nl}` : "");
     const ds = document.createElement("small"); ds.textContent = u.desc(nl);

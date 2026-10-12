@@ -43,7 +43,25 @@
 /* 起動時の黒い幕（system.js が描画前に付ける） */
 html.mg-booting { background: #000; }
 html.mg-booting::after {
-  content: ""; position: fixed; inset: 0; z-index: 2147483647; background: #000; pointer-events: none;
+  content: ""; position: fixed; inset: 0; z-index: 2147483646; background: #000; pointer-events: none;
   opacity: 1; transition: opacity .45s ease-out;
 }
 html.mg-booted::after { opacity: 0; }
+
+/* 読み込み表示（data-loading のゲーム）：黒い幕の上に白字の Loading... と細いバー */
+/* 全面を覆ってタップを受ける（下のゲームには届かない）。タップすると文字が跳ねる（system.js） */
+.mg-loading {
+  position: fixed; inset: 0; z-index: 2147483647;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  color: #fff; font: 800 17px/1 system-ui, sans-serif; letter-spacing: .1em;
+  cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: opacity .3s ease-out;
+}
+.mg-loading p { margin: 0; display: flex; }
+.mg-loading p span { display: inline-block; transform-origin: 50% 100%; will-change: transform; }
+.mg-loading .mg-spark { position: fixed; width: 5px; height: 5px; border-radius: 50%; background: #fff; pointer-events: none; }
+html.mg-booted .mg-loading { pointer-events: none; }
+.mg-loading-bar { width: 160px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .2); overflow: hidden; }
+.mg-loading-bar i { display: block; width: 0; height: 100%; background: #fff; transition: width .2s ease-out; }
+html.mg-booted .mg-loading { opacity: 0; }
+html:not(.mg-booting) .mg-loading { display: none; }

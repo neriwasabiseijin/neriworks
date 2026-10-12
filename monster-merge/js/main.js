@@ -10,14 +10,28 @@ function frame(ts) {
 }
 
 (async function boot() {
-  // wait briefly for the web fonts so the canvas text doesn't start in the fallback font
-  try { await Promise.race([Promise.all([document.fonts.load(`900 20px 'M PLUS Rounded 1c'`), document.fonts.load(`20px 'Mochiy Pop One'`)]), new Promise((r) => setTimeout(r, 1500))]); } catch (e) {}
-  await loadAssets();
+  // the shared black cover (../common/system.js, data-loading) shows "Loading..." with 2 web fonts + every image
+  // as its progress, and only lifts once the title is ready
+  const loading = (window.MG && MG.loading) || { progress() {}, done() {} }; // the single-file bundle has no system.js
+  const fonts = [`900 20px 'M PLUS Rounded 1c'`, `20px 'Mochiy Pop One'`];
+  const total = fonts.length + assetCount();
+  let fontsDone = 0, imagesDone = 0;
+  const progress = () => loading.progress(Math.min(total, fontsDone + imagesDone), total);
+  progress();
+  // fonts and images load side by side; fonts give up after a few seconds so a blocked font host can't stall the game
+  const fontLoad = Promise.race([
+    Promise.all(fonts.map((f) => document.fonts.load(f).catch(() => {}).then(() => { fontsDone++; progress(); }))),
+    new Promise((r) => setTimeout(r, 4000)),
+  ]).catch(() => {});
+  await Promise.all([fontLoad, loadAssets((d) => { imagesDone = d; progress(); })]);
+  fontsDone = fonts.length; progress();
   resize();
   $("titleBest").textContent = best ? "ベスト " + best : "";
   const chain = $("titleChain");
   for (let t = 1; t <= 8; t++) { const im = document.createElement("img"); im.src = imgURL(monImg[t]); im.alt = NAMES[t]; chain.appendChild(im); }
   requestAnimationFrame(frame);
+  ready = true;
+  loading.done();
   // hooks for automated play-testing
   window.__mm = {
     get state() { return state; }, get score() { return score; }, get drops() { return drops; }, get level() { return level; }, get ups() { return ups; }, get maxTier() { return maxTier; },

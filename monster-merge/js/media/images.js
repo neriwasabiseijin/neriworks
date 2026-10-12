@@ -82,18 +82,27 @@ function drawUpIcon(key) {
 function loadImage(src) {
   return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 }
-async function loadAssets() {
+// Loads every image in parallel; onProgress(done, total) after each one. Missing or failed images fall back to code drawings.
+async function loadAssets(onProgress) {
+  const keys = Object.keys(ASSETS).filter((k) => ASSETS[k]);
+  let done = 0;
+  const got = {};
+  await Promise.all(keys.map(async (k) => {
+    got[k] = await loadImage(ASSETS[k]);
+    if (onProgress) onProgress(++done, keys.length);
+  }));
   for (let t = 1; t <= 8; t++) {
-    monImg[t] = (ASSETS["m" + t] && await loadImage(ASSETS["m" + t])) || drawPlaceholder(t);
+    monImg[t] = got["m" + t] || drawPlaceholder(t);
     faceImg[t] = {};
-    for (const f of ["blink", "panic"]) if (ASSETS[`m${t}_${f}`]) faceImg[t][f] = await loadImage(ASSETS[`m${t}_${f}`]);
+    for (const f of ["blink", "panic"]) if (got[`m${t}_${f}`]) faceImg[t][f] = got[`m${t}_${f}`];
   }
-  img.stone = (ASSETS.stone && await loadImage(ASSETS.stone)) || drawStonePlaceholder(false);
-  img.stone_cracked = (ASSETS.stone_cracked && await loadImage(ASSETS.stone_cracked)) || drawStonePlaceholder(true);
-  img.bomb = (ASSETS.bomb && await loadImage(ASSETS.bomb)) || drawBomb();
-  img.rainbow = (ASSETS.rainbow && await loadImage(ASSETS.rainbow)) || drawRainbow();
-  for (const k of Object.keys(UPGRADES)) img["up_" + k] = (ASSETS["up_" + k] && await loadImage(ASSETS["up_" + k])) || drawUpIcon(k);
+  img.stone = got.stone || drawStonePlaceholder(false);
+  img.stone_cracked = got.stone_cracked || drawStonePlaceholder(true);
+  img.bomb = got.bomb || drawBomb();
+  img.rainbow = got.rainbow || drawRainbow();
+  for (const k of Object.keys(UPGRADES)) img["up_" + k] = got["up_" + k] || drawUpIcon(k);
 }
+function assetCount() { return Object.keys(ASSETS).filter((k) => ASSETS[k]).length; }
 // Body circle of each monster image in 0..1 coords, so the physics circle lines up with the drawn body.
 function bodyOf(t) { const r = RIGS["m" + t]; return r && ASSETS["m" + t] ? r.body : { cx: 0.5, cy: 280 / 512, r: 170 / 512 }; }
 function imgSizeFor(t, radius) { return radius / bodyOf(t).r; }
