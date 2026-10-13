@@ -82,17 +82,16 @@
   // 待っている間のおもちゃ：Loading... の文字がゆらゆら弾み、タップ / クリックすると近くの文字ほど強く跳ねる。
   // 文字ごとにばねで元に戻すので、連打すると重なって跳ねる。幕が消えたらループも止まる。
   function loadingToy(box) {
-    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const letters = [...box.querySelectorAll("p span")].map(el => ({ el, y: 0, vy: 0, s: 0, vs: 0, r: 0, vr: 0 }));
     box.addEventListener("pointerdown", e => {
       e.preventDefault(); // 下のゲームには伝えない（幕が全面を覆っている）
       for (const L of letters) {
         const b = L.el.getBoundingClientRect();
         const d = Math.hypot(b.left + b.width / 2 - e.clientX, b.top + b.height / 2 - e.clientY);
-        const k = (0.06 + 0.94 * Math.max(0, 1 - d / 170) ** 1.6) * (calm ? 0.12 : 1);
+        const k = (0.06 + 0.94 * Math.max(0, 1 - d / 170) ** 1.6);
         L.vy -= 800 * k; L.vs += 7 * k; L.vr += (Math.random() * 2 - 1) * 420 * k;
       }
-      if (!calm) sparkle(e.clientX, e.clientY);
+      sparkle(e.clientX, e.clientY);
     });
     function sparkle(x, y) {
       for (let i = 0; i < 8; i++) {
@@ -114,7 +113,7 @@
       const dt = Math.min(0.05, (now - last) / 1000) / 2; last = now;
       letters.forEach((L, i) => {
         for (let n = 0; n < 2; n++) { spring(L, "y", "vy", 170, 8, dt); spring(L, "s", "vs", 260, 12, dt); spring(L, "r", "vr", 200, 10, dt); }
-        const wave = calm ? 0 : -4 * Math.max(0, Math.sin(now / 1000 * 5.2 - i * 0.6)); // 約1.2秒でひと回りする小さな波
+        const wave = -4 * Math.max(0, Math.sin(now / 1000 * 5.2 - i * 0.6)); // 約1.2秒でひと回りする小さな波
         const st = Math.max(-0.35, Math.min(0.45, -L.vy / 1600)); // 跳ね上がる間は縦に伸び、落ちて戻るときは潰れる
         L.el.style.transform = `translateY(${L.y + wave}px) rotate(${L.r}deg) scale(${1 + L.s - st * 0.5}, ${1 + L.s + st})`;
       });
@@ -211,11 +210,6 @@
         try { sessionStorage.setItem(KEY, "off"); } catch {}
         location.href = HOME;
       };
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        q(".mg-top").style.height = "100%";
-        setTimeout(go, 150);
-        return;
-      }
       const f = (duration, easing, delay = 0) => ({ duration, easing, delay, fill: "forwards" });
       q(".mg-white").animate([{ opacity: 0 }, { opacity: 0.85 }, { opacity: 0.6 }], f(160, "ease-out"));
       q(".mg-top").animate([{ height: "0%" }, { height: "50%" }], f(220, "cubic-bezier(.7,0,1,.6)", 60));
