@@ -16,6 +16,9 @@
   const HOME = opt("home") || "../index.html";
   const KEY = "minigames:power"; // トップと受け渡す合図（"on" = 起動してきた / "off" = 電源を切って戻る）
 
+  // iPhone の Safari はピンチで画面が拡大され、バーのボタンが押せなくなるので止める（ダブルタップは system.css）
+  for (const ev of ["gesturestart", "gesturechange"]) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+
   // ---- 起動してきたときは黒から明ける
   // 描画前に黒い幕を出したいので、このスクリプトは <head> で読み込む（README 参照）。
   // data-loading を付けたゲームは、いつ開いても黒い幕に「Loading...」と進み具合を出し、
