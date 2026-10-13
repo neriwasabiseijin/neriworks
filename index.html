@@ -10,20 +10,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Righteous&display=swap">
 <script src="common/sound.js"></script><!-- 音量は全作品と共通の設定に従う -->
 <style>
+  /* 作品集は常にダーク（端末のライト/ダーク設定には従わない） */
   :root {
-    --bg: #fff8ef; --text: #2b2420; --sub: #7a6c62; --accent: #ff7a59; --new: #2fb36d; --wasabi: #6fa83a;
-    --shell: #c9c4cf; --shell-hi: #e2dee6; --shell-lo: #a39dab; --label: #fffdf8;
-    --console: #4b4553; --console-hi: #6a6375; --console-lo: #322d38;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #1c1917; --text: #f5efe9; --sub: #b4a89d; --accent: #ff906f; --new: #49c985;
-      --shell: #8e8896; --shell-hi: #a7a1ae; --shell-lo: #6d6875; --label: #2f2a2c;
-    }
-  }
-  :root[data-theme="dark"] {
     --bg: #1c1917; --text: #f5efe9; --sub: #b4a89d; --accent: #ff906f; --new: #49c985;
     --shell: #8e8896; --shell-hi: #a7a1ae; --shell-lo: #6d6875; --label: #2f2a2c;
+    --console: #4b4553; --console-hi: #6a6375; --console-lo: #322d38; --wasabi: #6fa83a;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
@@ -183,12 +175,6 @@
 
     const q = s => layer.querySelector(s);
     const fill = (duration, easing, delay = 0) => ({ duration, easing, delay, fill: "forwards" });
-
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      await q(".fade").animate([{ opacity: 0 }, { opacity: 1 }], fill(250, "linear")).finished;
-      go(href);
-      return;
-    }
 
     const W = innerWidth, H = innerHeight;
     const conW = Math.min(420, W * 0.92), conTop = H - 150;
