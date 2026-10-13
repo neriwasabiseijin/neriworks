@@ -110,8 +110,6 @@ button.sns.save { background: var(--panel-2); box-shadow: 0 3px 0 var(--line); f
 @keyframes lvFade { from { opacity: 0; } }
 @keyframes lvPop { from { opacity: 0; transform: scale(.6); } }
 @keyframes cardIn { from { opacity: 0; transform: translateY(28px) scale(.95); } }
-#musicBtn { font-size: 16px; } /* 位置と見た目は共通のシステムバー（../common/system.css）に従う */
-#musicBtn[aria-pressed="false"] { text-decoration: line-through; }
 #toast {
   position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
   background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 14px;
