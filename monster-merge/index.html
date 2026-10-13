@@ -10,6 +10,7 @@
 <!-- shared system bar: power (top-left) + BGM (top-right), see ../common/README.md -->
 <link rel="stylesheet" href="../common/system.css">
 <script src="../common/system.js" data-frame="#stage" data-right="#musicBtn" data-loading></script>
+<script src="../common/share.js"></script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -24,7 +25,7 @@
       <p>スマホ：ドラッグして指をはなす<br>PC：マウスでクリック ／ ←→ と Space</p>
       <p id="titleBest"></p>
       <div class="btns"><button id="startBtn">あそぶ</button></div>
-      <p class="ver">ver1.0.3</p>
+      <p class="ver">ver1.0.4</p>
     </div>
     <div id="levelup" class="overlay" hidden>
       <h2 id="lvTitle">レベルアップ！</h2>
@@ -41,12 +42,7 @@
       <div class="btns">
         <button id="retryBtn">もう一度</button>
       </div>
-      <div class="share" id="share">
-        <button id="shareBtn" class="sub" hidden>シェアする</button>
-        <button id="xBtn" class="sns x" aria-label="Xでポスト">𝕏</button>
-        <button id="lineBtn" class="sns line" aria-label="LINEで送る">LINE</button>
-        <button id="saveBtn" class="sns save" aria-label="画像を保存">保存</button>
-      </div>
+      <button id="shareBtn" class="sub">シェアする</button>
     </div>
     <button id="musicBtn" aria-pressed="true" aria-label="BGMのオンオフ">♪</button>
     <div id="toast" hidden></div>

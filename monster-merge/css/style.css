@@ -73,12 +73,7 @@ button.sub { background: var(--panel-2); color: var(--ink); box-shadow: 0 3px 0 
 button:active { transform: translateY(2px); box-shadow: none; }
 button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 #resMon { width: 120px; height: 120px; }
-.share { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
-.share #shareBtn { flex-basis: 100%; max-width: 230px; }
-button.sns { width: 56px; height: 44px; padding: 0; font-size: 14px; border-radius: 14px; color: #fff; }
-button.sns.x { background: #111; box-shadow: 0 3px 0 #000; font-size: 20px; }
-button.sns.line { background: #06c755; box-shadow: 0 3px 0 #04883a; font-size: 13px; }
-button.sns.save { background: var(--panel-2); box-shadow: 0 3px 0 var(--line); font-size: 13px; }
+#shareBtn { min-width: 200px; }
 #resUps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 #resUps span { font-size: 12px; background: var(--panel-2); border-radius: 999px; padding: 3px 9px; color: var(--ink); }
 #levelup .cards { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 310px; }

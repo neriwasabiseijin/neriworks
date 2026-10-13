@@ -1,8 +1,7 @@
 "use strict";
-// Result sharing: a square result card (board screenshot + score) for the share sheet, X, LINE or saving.
+// Result sharing: a square result card (board screenshot + score), handed to the shared share button (../common/share.js).
 
 const SHARE_TAG = "#まるもんえぼりゅーしょん";
-let shareFile = null, shareURL = null;
 
 function shareText() {
   const page = /^https?:/.test(location.href) && !/claude\.ai|claudeusercontent/.test(location.href) ? "\n" + location.href.split("#")[0] : "";
@@ -42,46 +41,12 @@ function makeShareCard() {
 }
 
 function prepareShare() {
-  shareFile = null;
-  if (shareURL) { URL.revokeObjectURL(shareURL); shareURL = null; }
+  const sh = window.MG && MG.share; // the single-file bundle has no common/share.js
+  $("shareBtn").hidden = !sh;
+  if (!sh) return;
   let card;
   try { card = makeShareCard(); } catch (e) { return; }
-  try {
-    // throws when the canvas is tainted (e.g. images opened from file://); sharing then falls back to text only
-    card.toBlob((blob) => {
-      if (!blob) return;
-      shareFile = new File([blob], `marumon-${score}.png`, { type: "image/png" });
-      shareURL = URL.createObjectURL(blob);
-    }, "image/png");
-  } catch (e) {}
-  $("shareBtn").hidden = !navigator.share;
+  sh.prepare(card, { text: shareText(), name: `marumon-${score}.png` });
 }
 
-async function copyImage() {
-  if (!shareFile || !navigator.clipboard || !window.ClipboardItem) return false;
-  try { await navigator.clipboard.write([new ClipboardItem({ "image/png": shareFile })]); return true; } catch (e) { return false; }
-}
-
-// Phones: the OS share sheet (LINE, X, Instagram...) with the image attached.
-$("shareBtn").onclick = async () => {
-  const data = { text: shareText() };
-  if (shareFile && navigator.canShare && navigator.canShare({ files: [shareFile] })) data.files = [shareFile];
-  try { await navigator.share(data); } catch (e) { if (e.name !== "AbortError") showToast("シェアできませんでした"); }
-};
-// X / LINE web intents can't carry an image, so the card goes to the clipboard first for pasting.
-$("xBtn").onclick = async () => {
-  const copied = await copyImage();
-  window.open("https://x.com/intent/post?text=" + encodeURIComponent(shareText()), "_blank", "noopener");
-  showToast(copied ? "画像をコピーしました。投稿欄に貼り付けてね" : "テキストだけシェアします");
-};
-$("lineBtn").onclick = async () => {
-  const copied = await copyImage();
-  window.open("https://line.me/R/share?text=" + encodeURIComponent(shareText()), "_blank", "noopener");
-  showToast(copied ? "画像をコピーしました。トークに貼り付けてね" : "テキストだけ送ります");
-};
-$("saveBtn").onclick = () => {
-  if (!shareURL) { showToast(location.protocol === "file:" ? "ファイルを直接開いたときは画像を作れません" : "画像を作れませんでした"); return; }
-  const a = document.createElement("a");
-  a.href = shareURL; a.download = shareFile.name;
-  document.body.appendChild(a); a.click(); a.remove();
-};
+$("shareBtn").onclick = () => MG.share.open();
