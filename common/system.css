@@ -5,6 +5,10 @@
  */
 :root { --mg-bar-h: calc(48px + env(safe-area-inset-top, 0px)); }
 
+/* スマホのダブルタップ拡大を止める（iPhone の Safari は user-scalable=no を無視するため）。
+   ゲーム枠の外（バーの帯や余白）でも効くよう、ページ全体に付ける。ピンチ拡大は system.js で止める。 */
+html { touch-action: manipulation; }
+
 .mg-bar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 50;
   height: var(--mg-bar-h); padding: env(safe-area-inset-top, 0px) 0 0;
