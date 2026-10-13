@@ -1,0 +1,126 @@
+/* Layout: one portrait 400x720 canvas scaled to fit under the shared bar; HTML overlays for title and result.
+   Single dark look on purpose: a summer night over a riverside town, warm gold for rewards. */
+:root {
+  --night: #070919;
+  --panel: rgba(12, 10, 32, .78);
+  --ink: #fff4dc;
+  --muted: #bdb3e0;
+  --gold: #ffd76a;
+  --ember: #ff8a6a;
+  --line: rgba(255, 255, 255, .14);
+  --font-big: "Yuji Syuku", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Meiryo", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app {
+  position: fixed;
+  inset: var(--mg-bar-h, 0px) 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+#stage { position: relative; overflow: hidden; border-radius: 14px; touch-action: none; }
+canvas { display: block; width: 100%; height: 100%; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 22px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(7, 9, 25, .2), rgba(7, 9, 25, .72) 40%, rgba(7, 9, 25, .85));
+}
+/* タイトルは花火が透けて見えるよう、暗幕を薄くする（文字のある下側だけ少し暗く） */
+#title { background: linear-gradient(180deg, rgba(7, 9, 25, 0), rgba(7, 9, 25, .12) 45%, rgba(7, 9, 25, .55)); }
+.logo { display: block; width: min(270px, 70vw); height: auto; margin: -6px auto -4px; filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .55)); }
+.eyebrow { margin: 0; font-size: 12px; letter-spacing: .2em; color: var(--muted); }
+h1 {
+  margin: 0;
+  font: 400 54px/1.05 var(--font-big);
+  color: var(--ink);
+  text-shadow: 0 0 18px rgba(255, 170, 110, .7), 0 0 42px rgba(255, 110, 140, .45);
+}
+.lead { margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink); }
+.rules {
+  list-style: none; margin: 4px 0 0; padding: 12px 14px;
+  display: grid; gap: 8px; text-align: left; max-width: 320px;
+  font-size: 12.5px; line-height: 1.55; color: var(--muted);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+}
+.rules b { color: var(--gold); font-weight: 700; }
+.best { margin: 0; min-height: 1.2em; font-size: 13px; color: var(--gold); }
+.primary {
+  margin-top: 4px; padding: 12px 40px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 700 18px var(--font-body); color: #2a1406;
+  background: linear-gradient(180deg, var(--gold), var(--ember));
+  box-shadow: 0 0 24px rgba(255, 170, 100, .45);
+}
+.primary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.big { font: 400 56px/1 var(--font-big); color: var(--ink); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(255, 190, 120, .7); }
+.stats { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(280px, 100%); }
+.stats div { padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.stats dt { font-size: 11px; color: var(--muted); letter-spacing: .1em; }
+.stats dd { margin: 4px 0 0; font-size: 18px; font-weight: 700; }
+.secondary {
+  padding: 9px 28px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+  font: 700 15px var(--font-body); color: var(--ink); background: var(--panel);
+}
+.secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* あそびかた：上に説明カード、下にボタン。まんなかはお手本が動く夜空 */
+#tut { position: absolute; inset: 0; pointer-events: none; }
+.tut-card {
+  position: absolute; left: 14px; right: 14px; top: 14px;
+  padding: 14px 16px 16px; text-align: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+}
+.tut-card h2 { white-space: pre-line; margin: 6px 0 6px; font: 400 26px/1.25 var(--font-big); color: var(--ink); text-wrap: balance;
+  text-shadow: 0 0 14px rgba(255, 170, 110, .5); }
+.tut-card p { white-space: pre-line; margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); text-wrap: balance; }
+.tut-dots { display: flex; justify-content: center; gap: 6px; }
+.tut-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+.tut-dots i.on { background: var(--gold); }
+.tut-btns { position: absolute; left: 14px; right: 14px; bottom: 96px; display: flex; justify-content: space-between; pointer-events: auto; }
+.tut-btns button { padding: 9px 20px; border-radius: 999px; cursor: pointer; font: 700 14px var(--font-body); }
+.tut-skip { border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
+.tut-next { border: 0; color: #2a1406; background: linear-gradient(180deg, var(--gold), var(--ember)); opacity: .45; transition: opacity .3s; }
+.tut-next.ready { opacity: 1; box-shadow: 0 0 18px rgba(255, 170, 100, .5); }
+.tut-btns button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.note { margin: 0; font-size: 11px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .primary { box-shadow: none; } }
+
+/* 実行委員長のひとこと（リザルト） */
+.chair { margin: 4px 0 0; width: min(300px, 100%); padding: 12px 14px 10px; background: rgba(255, 236, 200, .06); border: 1px solid rgba(255, 214, 150, .3); border-radius: 10px; }
+.chair blockquote { margin: 0; font-family: "Yuji Syuku", serif; font-size: 16px; line-height: 1.6; color: #ffe9c8; }
+.chair figcaption { margin-top: 6px; text-align: right; font-size: 11px; color: var(--muted); letter-spacing: .1em; }
+#resStage { font-size: 15px; white-space: nowrap; }
+/* リザルト：スコアと委員長のひとことが主役。詳細は小さく控えめに */
+.chair { margin-top: 10px; padding: 16px 16px 12px; }
+.chair blockquote { font-size: 18px; }
+.stats.small { gap: 8px; opacity: .8; }
+.stats.small div { padding: 6px 8px; }
+.stats.small dd { font-size: 14px; }
+.stats.small #resStage { font-size: 13px; }
+.chair blockquote { white-space: pre-line; }
+
+/* 大きい文字：1行ずつ折り返さない（入らなければ setLines が文字を小さくする） */
+.ln { display: block; width: max-content; max-width: none; margin: 0 auto; white-space: nowrap; }
+.chair .ln { margin: 0; }
