@@ -60,8 +60,6 @@ function updateBursts(dt) {
     G.maxChain = Math.max(G.maxChain, G.chainNow);
     // 倍率の高い玉は、点の文字も大きく（後ろで開くほど大きな数字が出る）
     addText(`+${pts}`, o.x, o.y - 14, type.score > 1 ? 13 + Math.min(9, depth) : 13, type.score > 1 ? 1.1 : 0.8, type.score > 1 ? [255, 236, 170] : COLORS[o.color].rgb);
-    if (G.mode === "tutorial") addText(same ? `同じ色 輪×${mult.toFixed(1)}` : "色ちがい 輪×1", o.x, o.y - 40, 13, 1.4, same ? COLORS[o.color].rgb : [220, 220, 235]);
-    else if (same && depth >= 2) addText("同色！", o.x, o.y + 16, 11, 0.7, COLORS[o.color].rgb);
     burst(o.x, o.y, o.color, mult, type.ring, depth, false);
   }
 }
