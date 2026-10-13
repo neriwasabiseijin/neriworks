@@ -7,9 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Mochiy+Pop+One&display=swap">
-<!-- shared system bar: power (top-left) + BGM (top-right), see ../common/README.md -->
+<!-- shared system bar: power (top-left) + volume (top-right), see ../common/README.md -->
 <link rel="stylesheet" href="../common/system.css">
-<script src="../common/system.js" data-frame="#stage" data-right="#musicBtn" data-loading></script>
+<script src="../common/system.js" data-frame="#stage" data-loading></script>
+<!-- shared volume (BGM / SE sliders, shared by every game); data-bgm / data-sfx bring this game to the common loudness -->
+<script src="../common/sound.js" data-bgm="10" data-sfx="16" data-button></script>
 <script src="../common/share.js"></script>
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -25,7 +27,7 @@
       <p>スマホ：ドラッグして指をはなす<br>PC：マウスでクリック ／ ←→ と Space</p>
       <p id="titleBest"></p>
       <div class="btns"><button id="startBtn">あそぶ</button></div>
-      <p class="ver">ver1.0.4</p>
+      <p class="ver">ver1.0.5</p>
     </div>
     <div id="levelup" class="overlay" hidden>
       <h2 id="lvTitle">レベルアップ！</h2>
@@ -44,7 +46,6 @@
       </div>
       <button id="shareBtn" class="sub">シェアする</button>
     </div>
-    <button id="musicBtn" aria-pressed="true" aria-label="BGMのオンオフ">♪</button>
     <div id="toast" hidden></div>
   </div>
 </div>

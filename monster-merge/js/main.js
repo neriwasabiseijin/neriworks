@@ -4,7 +4,7 @@
 function frame(ts) {
   const dt = Math.min(0.05, (ts - lastT) / 1000 || 0);
   lastT = ts;
-  update(dt);
+  if (!(window.MG && MG.paused)) update(dt); // the shared volume screen pauses the game while it is open
   render();
   requestAnimationFrame(frame);
 }

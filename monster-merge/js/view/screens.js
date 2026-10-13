@@ -39,6 +39,4 @@ function startGame() {
   newGame();
 }
 $("startBtn").onclick = startGame;
-$("musicBtn").setAttribute("aria-pressed", String(music.on));
-$("musicBtn").onclick = (e) => { e.stopPropagation(); audio(); $("musicBtn").setAttribute("aria-pressed", String(music.toggle())); };
 $("retryBtn").onclick = startGame;
