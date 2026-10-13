@@ -28,13 +28,12 @@ const music = (() => {
     }
     return notes;
   });
-  let on = store.get("monster-merge-music") !== "0";
   let master = null, lp = null, noise = null, timer = null, nextTime = 0, step = 0;
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
   function setup(a) {
     master = a.createGain(); master.gain.value = 0;
     lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 9000;
-    master.connect(lp).connect(a.destination);
+    master.connect(lp).connect(shared ? shared.bgm : a.destination);
     noise = a.createBuffer(1, a.sampleRate * 0.3, a.sampleRate);
     const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
@@ -86,9 +85,8 @@ const music = (() => {
     while (nextTime < a.currentTime + 0.15) { schedule(a, nextTime, step); nextTime += STEP_T; step++; }
   }
   return {
-    get on() { return on; },
     start() {
-      const a = audio(); if (!a || !on) return;
+      const a = audio(); if (!a) return;
       if (a.state === "suspended") a.resume();
       if (!master) setup(a);
       if (timer) return;
@@ -104,6 +102,5 @@ const music = (() => {
       const t = timer; timer = null; setTimeout(() => clearInterval(t), 550);
     },
     duck(d) { if (lp && ac) lp.frequency.setTargetAtTime(d ? 700 : 9000, ac.currentTime, 0.15); },
-    toggle() { on = !on; store.set("monster-merge-music", on ? "1" : "0"); if (on && state !== "title" && state !== "over") this.start(); else this.stop(); return on; },
   };
 })();

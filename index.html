@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Righteous&display=swap">
+<script src="common/sound.js"></script><!-- 音量は全作品と共通の設定に従う -->
 <style>
   :root {
     --bg: #fff8ef; --text: #2b2420; --sub: #7a6c62; --accent: #ff7a59; --new: #2fb36d; --wasabi: #6fa83a;
@@ -145,7 +146,7 @@
     const src = ctx.createBufferSource(); src.buffer = buf;
     const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = freq; f.Q.value = 1.2;
     const g = ctx.createGain(); g.gain.value = vol;
-    src.connect(f).connect(g).connect(ctx.destination); src.start(t);
+    src.connect(f).connect(g).connect(MG.sound.ui); src.start(t);
   }
   // 起動音（ピロン）
   function bootSound(ctx, t) {
@@ -153,7 +154,7 @@
     o.type = "square"; o.frequency.setValueAtTime(988, t); o.frequency.setValueAtTime(1976, t + 0.08);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.08, t + 0.01);
     g.gain.setValueAtTime(0.08, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-    o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.65);
+    o.connect(g).connect(MG.sound.ui); o.start(t); o.stop(t + 0.65);
   }
 
   const wait = ms => new Promise(res => setTimeout(res, ms));
@@ -163,7 +164,7 @@
     booting = true;
     const href = a.href;
     let ctx = null;
-    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+    try { ctx = MG.sound.ctx; if (ctx && ctx.state !== "running") ctx.resume(); } catch {}
 
     const shell = a.querySelector(".shell");
     const r = shell.getBoundingClientRect();

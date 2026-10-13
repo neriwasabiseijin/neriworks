@@ -1,5 +1,5 @@
 /*
- * ミニゲーム共通：システムバー（左上に電源、右上にBGM・オプション）と電源ON/OFF演出。
+ * ミニゲーム共通：システムバー（左上に電源、右上に音量・オプション）と電源ON/OFF演出。
  * 使い方とデザインルールは common/README.md を参照。
  *
  *   <head> の system.css の直後に：
@@ -180,17 +180,20 @@
 
     // プツン…という音
     function offSound() {
+      // common/sound.js があれば共通の音量に従う
+      const S = window.MG && MG.sound;
       let ctx;
-      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
-      const t = ctx.currentTime;
+      try { ctx = S ? S.ctx : new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+      if (!ctx) return;
+      const out = S ? S.ui : ctx.destination, t = ctx.currentTime;
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = "sine"; o.frequency.setValueAtTime(880, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.45);
       g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.55);
+      o.connect(g).connect(out); o.start(t); o.stop(t + 0.55);
       const n = Math.floor(ctx.sampleRate * 0.04), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 4);
       const s = ctx.createBufferSource(), sg = ctx.createGain(); s.buffer = buf; sg.gain.value = 0.5;
-      s.connect(sg).connect(ctx.destination); s.start(t);
+      s.connect(sg).connect(out); s.start(t);
     }
 
     // ブラウン管の電源を切ったように、画面が横線→点に縮んで消える

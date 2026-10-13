@@ -2,7 +2,10 @@
 // Sound effects synthesized with WebAudio.
 
 let ac = null;
-function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } return ac; }
+// the shared output (../common/sound.js) owns the context and the BGM / SE volume; the single-file bundle has none
+const shared = window.MG && MG.sound;
+function audio() { if (!ac) { try { ac = shared ? shared.ctx : new (window.AudioContext || window.webkitAudioContext)(); } catch {} } return ac; }
+const sfxOut = () => (shared ? shared.sfx : ac.destination);
 function tone(freq, dur, type = "sine", vol = 0.15, when = 0, slide = 1.5) {
   const a = audio(); if (!a) return;
   const t0 = a.currentTime + when;
@@ -10,7 +13,7 @@ function tone(freq, dur, type = "sine", vol = 0.15, when = 0, slide = 1.5) {
   o.type = type; o.frequency.setValueAtTime(freq, t0);
   o.frequency.exponentialRampToValueAtTime(freq * slide, t0 + dur);
   g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  o.connect(g).connect(sfxOut()); o.start(t0); o.stop(t0 + dur + 0.02);
 }
 const sfx = {
   drop() { tone(320, 0.08, "triangle", 0.08); },
