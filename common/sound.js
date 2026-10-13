@@ -51,10 +51,17 @@
     for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, resume, true);
     return nodes;
   }
+  // 新しい音量へ 20ms で切り替える（ゆっくり近づけると、直後に鳴らした音が前の音量のまま聞こえる）
+  const FADE = 0.02;
   function apply() {
     if (!nodes) return;
-    for (const k of ["bgm", "sfx"]) nodes[k].gain.setTargetAtTime(trim[k] * curve(vol[k]), ctx.currentTime, 0.03);
-    nodes.ui.gain.setTargetAtTime(UI * curve(vol.sfx), ctx.currentTime, 0.03);
+    const t = ctx.currentTime, to = (node, v) => {
+      node.gain.cancelScheduledValues(t);
+      node.gain.setValueAtTime(node.gain.value, t);
+      node.gain.linearRampToValueAtTime(v, t + FADE);
+    };
+    for (const k of ["bgm", "sfx"]) to(nodes[k], trim[k] * curve(vol[k]));
+    to(nodes.ui, UI * curve(vol.sfx));
   }
   const ensure = () => nodes || build() || {};
 
@@ -91,14 +98,17 @@
       modal.querySelector(`[data-out=${k}]`).textContent = vol[k] ? vol[k] : "オフ";
     }
   }
-  // 効果音のつまみを動かしたときのお試し音
-  let lastBeep = 0;
+  // 効果音のつまみを動かしたときのお試し音。動かしている間は鳴らさず、指が止まったら新しい音量で1回鳴らす
+  let beepTimer = 0;
   function beep() {
-    const n = ensure(); if (!n.sfx) return;
-    const now = performance.now(); if (now - lastBeep < 120) return; lastBeep = now;
-    const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    clearTimeout(beepTimer);
+    beepTimer = setTimeout(beepNow, 90);
+  }
+  function beepNow() {
+    const n = ensure(); if (!n.ui || !vol.sfx) return;
+    const t = ctx.currentTime + FADE, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = "triangle"; o.frequency.setValueAtTime(880, t); o.frequency.exponentialRampToValueAtTime(1320, t + 0.08);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
     o.connect(g).connect(n.ui); o.start(t); o.stop(t + 0.2);
   }
 
