@@ -16,8 +16,25 @@
   const HOME = opt("home") || "../index.html";
   const KEY = "minigames:power"; // トップと受け渡す合図（"on" = 起動してきた / "off" = 電源を切って戻る）
 
-  // iPhone の Safari はピンチで画面が拡大され、バーのボタンが押せなくなるので止める（ダブルタップは system.css）
-  for (const ev of ["gesturestart", "gesturechange"]) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+  // ---- スマホでの拡大を止める（拡大されるとバーのボタンが押せなくなるため）
+  // iPhone の Safari は user-scalable=no も touch-action も効かないことがあるので、タップの処理で止める。
+  // ダブルタップ：2回目のタップの既定動作（拡大）を止め、ボタンなどへのクリックは代わりに送る。
+  // ゲームの操作は pointer イベントなので影響しない。
+  let lastTap = 0;
+  addEventListener("touchend", e => {
+    const now = e.timeStamp;
+    if (now - lastTap < 350 && e.cancelable && !e.touches.length) {
+      e.preventDefault();
+      const btn = e.target instanceof Element && e.target.closest("button, a, label, [role=button]");
+      if (btn) btn.click();
+    }
+    lastTap = now;
+  }, { capture: true, passive: false });
+  addEventListener("dblclick", e => e.preventDefault(), { capture: true, passive: false });
+  // ピンチ：拡大を止める。もし拡大されてしまっていたら、元に戻せるよう止めない。
+  for (const ev of ["gesturestart", "gesturechange"]) {
+    document.addEventListener(ev, e => { if ((window.visualViewport?.scale || 1) <= 1.01) e.preventDefault(); }, { passive: false });
+  }
 
   // ---- 起動してきたときは黒から明ける
   // 描画前に黒い幕を出したいので、このスクリプトは <head> で読み込む（README 参照）。
