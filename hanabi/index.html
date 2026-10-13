@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>夜空満開はなびチェイン</title>
+<link rel="stylesheet" href="../common/system.css">
+<script src="../common/system.js" data-frame="#stage"></script>
+<script src="../common/sound.js" data-bgm="5" data-sfx="5" data-button></script>
+<script src="../common/share.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="title" class="overlay">
+      <p class="eyebrow">ver1.0.0</p>
+      <h1><img class="logo" src="assets/logo.webp" width="640" height="678" alt="夜空満開はなびチェイン"></h1>
+      <p class="lead">花火玉を引っ張って撃ち上げ、<br>夜空の火の玉をつぎつぎ咲かせよう。</p>
+      <p id="titleBest" class="best"></p>
+      <button id="startBtn" type="button" class="primary">あそぶ</button>
+      <button id="howBtn" type="button" class="secondary">あそびかた</button>
+    </div>
+    <div id="tut" hidden>
+      <div class="tut-card">
+        <div class="tut-dots" id="tutDots"></div>
+        <h2 id="tutCap"></h2>
+        <p id="tutSub"></p>
+      </div>
+      <div class="tut-btns">
+        <button id="tutSkip" type="button" class="tut-skip">スキップ</button>
+        <button id="tutNext" type="button" class="tut-next">つぎへ</button>
+      </div>
+    </div>
+    <div id="result" class="overlay" hidden>
+      <p class="eyebrow" id="resHead">おしまい</p>
+      <div class="big" id="resScore">0</div>
+      <p id="resBest" class="best"></p>
+      <figure class="chair">
+        <blockquote id="resComment"></blockquote>
+        <figcaption>花火大会 実行委員長</figcaption>
+      </figure>
+      <dl class="stats small">
+        <div><dt>とどいた所</dt><dd id="resStage"></dd></div>
+        <div><dt>最大連鎖</dt><dd id="resChain"></dd></div>
+      </dl>
+      <button id="retryBtn" type="button" class="primary">もう一回</button>
+      <button id="shareBtn" type="button" class="secondary">シェアする</button>
+    </div>
+  </div>
+</div>
+<script src="js/core/config.js"></script>
+<script src="js/core/random.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/canvas.js"></script>
+<script src="js/media/music.js"></script>
+<script src="js/media/sfx.js"></script>
+<script src="js/game/state.js"></script>
+<script src="js/game/stage.js"></script>
+<script src="js/game/shell.js"></script>
+<script src="js/game/rhythm.js"></script>
+<script src="js/game/burst.js"></script>
+<script src="js/game/cloud.js"></script>
+<script src="js/game/finale.js"></script>
+<script src="js/game/program.js"></script>
+<script src="js/game/ending.js"></script>
+<script src="js/game/update.js"></script>
+<script src="js/view/particles.js"></script>
+<script src="js/view/sky.js"></script>
+<script src="js/view/crowd.js"></script>
+<script src="js/view/board.js"></script>
+<script src="js/view/render.js"></script>
+<script src="js/view/screens.js"></script>
+<script src="js/view/share.js"></script>
+<script src="js/view/tutorial.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
