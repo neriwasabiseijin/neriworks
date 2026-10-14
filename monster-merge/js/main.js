@@ -23,8 +23,19 @@ function frame(ts) {
     Promise.all(fonts.map((f) => document.fonts.load(f).catch(() => {}).then(() => { fontsDone++; progress(); }))),
     new Promise((r) => setTimeout(r, 4000)),
   ]).catch(() => {});
-  await Promise.all([fontLoad, loadAssets((d) => { imagesDone = d; progress(); })]);
+  // images retry on their own; each retry pings the cover so it keeps waiting instead of lifting early
+  const [, failed] = await Promise.all([fontLoad, loadAssets((d) => { imagesDone = d; progress(); }, progress)]);
   fontsDone = fonts.length; progress();
+  if (failed.length) {
+    // never start with stand-in drawings: the title only offers to load the page again
+    console.warn("[marumon] images failed to load:", failed);
+    $("titleChain").hidden = true;
+    $("titleBest").textContent = "画像を読み込めませんでした。もう一度読み込んでください。";
+    $("startBtn").textContent = "もう一度読み込む";
+    $("startBtn").onclick = () => location.reload();
+    loading.done();
+    return;
+  }
   resize();
   $("titleBest").textContent = best ? "ベスト " + best : "";
   const chain = $("titleChain");
