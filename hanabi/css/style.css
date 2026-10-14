@@ -124,3 +124,7 @@ h1 {
 /* 大きい文字：1行ずつ折り返さない（入らなければ setLines が文字を小さくする） */
 .ln { display: block; width: max-content; max-width: none; margin: 0 auto; white-space: nowrap; }
 .chair .ln { margin: 0; }
+
+/* 起動時のスプラッシュ（common/splash.js）：はなびの文字で */
+.mg-splash { font-family: var(--font-body); color: var(--ink); }
+.mg-splash .splash-icon { width: 44px; height: 44px; color: var(--gold); }
