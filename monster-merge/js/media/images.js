@@ -79,18 +79,39 @@ function drawUpIcon(key) {
     g.lineWidth = 14; g.strokeText(u.glyph, 128, 136); g.fillStyle = "#fff"; g.fillText(u.glyph, 128, 136);
   }, 256);
 }
-function loadImage(src) {
-  return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+// One try at an image. A try that neither loads nor fails within `ms` counts as failed, so a stuck request can't stall the game.
+function loadImage(src, ms = 10000) {
+  return new Promise((res) => {
+    const im = new Image();
+    const end = (ok) => { clearTimeout(timer); im.onload = im.onerror = null; res(ok ? im : null); };
+    const timer = setTimeout(() => end(false), ms);
+    im.onload = () => end(im.naturalWidth > 0);
+    im.onerror = () => end(false);
+    im.src = src;
+  });
 }
-// Loads every image in parallel; onProgress(done, total) after each one. Missing or failed images fall back to code drawings.
-async function loadAssets(onProgress) {
+// Tries an image up to 3 times. Retries add a query so a broken copy in the browser cache isn't reused;
+// onRetry runs before each retry (the boot keeps the Loading cover alive with it).
+async function loadImageRetry(src, onRetry) {
+  for (let i = 0; i < 3; i++) {
+    if (i) { if (onRetry) onRetry(); await new Promise((r) => setTimeout(r, 600 * i)); }
+    const im = await loadImage(i && !src.startsWith("data:") ? src + (src.includes("?") ? "&" : "?") + "retry=" + i : src);
+    if (im) return im;
+  }
+  return null;
+}
+// Loads every image in parallel; onProgress(done, total) after each one. Returns the keys that still failed after retrying
+// (the boot then stops instead of starting with code drawings). Empty slots in ASSETS use code drawings.
+async function loadAssets(onProgress, onRetry) {
   const keys = Object.keys(ASSETS).filter((k) => ASSETS[k]);
   let done = 0;
   const got = {};
   await Promise.all(keys.map(async (k) => {
-    got[k] = await loadImage(ASSETS[k]);
+    got[k] = await loadImageRetry(ASSETS[k], onRetry);
     if (onProgress) onProgress(++done, keys.length);
   }));
+  const failed = keys.filter((k) => !got[k]);
+  if (failed.length) return failed;
   for (let t = 1; t <= 8; t++) {
     monImg[t] = got["m" + t] || drawPlaceholder(t);
     faceImg[t] = {};
@@ -101,6 +122,7 @@ async function loadAssets(onProgress) {
   img.bomb = got.bomb || drawBomb();
   img.rainbow = got.rainbow || drawRainbow();
   for (const k of Object.keys(UPGRADES)) img["up_" + k] = got["up_" + k] || drawUpIcon(k);
+  return failed;
 }
 function assetCount() { return Object.keys(ASSETS).filter((k) => ASSETS[k]).length; }
 // Body circle of each monster image in 0..1 coords, so the physics circle lines up with the drawn body.
