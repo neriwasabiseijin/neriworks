@@ -58,12 +58,16 @@
         end();
         setTimeout(() => box.remove(), 600);
       };
-      // タップで飛ばす。直前まで Loading... を連打していた指で飛ばしてしまわないよう、出始めは受け付けない
+      // タップで飛ばす。直前まで Loading... を連打していた指で飛ばしてしまわないよう、出始めは受け付けない。
+      // 飛ばしたタップが下のボタン（あそぶ等）に届かないよう、消え終わるまで全面で操作を受け止める
       const t0 = performance.now();
-      box.addEventListener("pointerdown", e => {
-        e.preventDefault();
-        if (performance.now() - t0 > 350) finish();
-      });
+      for (const ev of ["pointerdown", "pointerup", "mousedown", "mouseup", "touchstart", "touchend", "click"]) {
+        box.addEventListener(ev, e => {
+          if (e.cancelable) e.preventDefault();
+          e.stopPropagation();
+          if (ev === "pointerup" && performance.now() - t0 > 350) finish();
+        }, { passive: false });
+      }
       (async () => {
         const tpl = await Promise.race([ready, new Promise(r => setTimeout(r, 3000))]);
         const slides = tpl ? [...tpl.content.children] : [];

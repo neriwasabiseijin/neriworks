@@ -79,7 +79,7 @@ html.mg-splashing .mg-loading { opacity: 0; pointer-events: none; }
   cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
   transition: opacity .45s ease-out;
 }
-.mg-splash.mg-out { opacity: 0; pointer-events: none; }
+.mg-splash.mg-out { opacity: 0; } /* 消える間もタップを受け止める（下のボタンに届かせない） */
 .mg-splash .mg-slide {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
   max-width: 100%; opacity: 0; transition: opacity .5s ease;
