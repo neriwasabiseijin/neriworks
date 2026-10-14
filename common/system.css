@@ -69,6 +69,25 @@ html.mg-booted .mg-loading { pointer-events: none; }
 .mg-loading-bar i { display: block; width: 0; height: 100%; background: #fff; transition: width .2s ease-out; }
 html.mg-booted .mg-loading { opacity: 0; }
 html:not(.mg-booting) .mg-loading { display: none; }
+html.mg-splashing .mg-loading { opacity: 0; pointer-events: none; }
+
+/* スプラッシュ（common/splash.js）：黒い幕の上で、1枚ずつフェードで見せる。全面を覆い、タップで飛ばす */
+.mg-splash {
+  position: fixed; inset: 0; z-index: 2147483647;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  color: #fff; font: 700 16px/1.8 system-ui, sans-serif; letter-spacing: .06em; text-align: center;
+  cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: opacity .45s ease-out;
+}
+.mg-splash.mg-out { opacity: 0; } /* 消える間もタップを受け止める（下のボタンに届かせない） */
+.mg-splash .mg-slide {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  max-width: 100%; opacity: 0; transition: opacity .5s ease;
+}
+.mg-splash .mg-slide.mg-in { opacity: 1; }
+.mg-splash img { display: block; max-width: min(72vw, 360px); max-height: 50vh; height: auto; }
+.mg-splash p { margin: 0; }
+.mg-splash small { display: block; font-size: 12px; font-weight: 500; opacity: .6; }
 
 /* 音量画面（common/sound.js、data-button）：開いている間はゲームを止める */
 .mg-vol {
