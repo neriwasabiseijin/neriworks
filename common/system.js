@@ -8,6 +8,9 @@
  *   data-frame  バーの左右端をそろえるゲーム画面の要素（省略時は画面幅いっぱい）
  *   data-right  右上に置くゲーム側のボタン（カンマ区切りのセレクタ、左から順に並ぶ）
  *   data-home   戻り先（省略時 ../index.html）
+ *   data-loading 読み込み中は黒い幕に Loading... を出す（MG.loading.progress / done）
+ *
+ *   スプラッシュ（ロゴや注意書き）は common/splash.js を system.js の直後に読み込む。
  */
 (() => {
   "use strict";
@@ -45,10 +48,15 @@
   const root = document.documentElement;
   const waitGame = me && "loading" in me.dataset;
   let bar = null, stall = 0, done = false;
+  // 幕を上げる。スプラッシュ（common/splash.js）があれば、黒い幕の上で流し終えてから上げる
   const reveal = () => {
     if (done) return;
     done = true;
     clearTimeout(stall);
+    const splash = window.MG && MG.splash;
+    if (splash) splash.play(lift); else lift();
+  };
+  const lift = () => {
     requestAnimationFrame(() => {
       root.classList.add("mg-booted");
       setTimeout(() => root.classList.remove("mg-booting", "mg-booted"), 600);
@@ -73,7 +81,8 @@
         done() { if (done) return; bar.style.width = "100%"; setTimeout(reveal, 150); },
       },
     };
-  } else if (flag === "on") {
+  } else {
+    // 起動してきたとき（またはスプラッシュがあるとき）は、ページの読み込みが済んだら幕を上げる
     addEventListener("load", () => setTimeout(reveal, 80));
     setTimeout(reveal, 2500); // 読み込みが遅くても、いつまでも真っ暗にはしない
   }
