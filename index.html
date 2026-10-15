@@ -54,6 +54,7 @@
   .thumb { aspect-ratio: 4 / 3; background: #222 center / cover no-repeat; display: grid; place-items: center; font-size: 56px; }
   .label-title { padding: 8px 10px; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; color: var(--text); }
   .badge { font-size: 11px; font-weight: 700; color: #fff; background: var(--new); border-radius: 999px; padding: 2px 8px; }
+  .badge.update { background: var(--accent); color: #2a1406; }
   .caption { padding: 10px 4px 0; }
   .desc { color: var(--sub); font-size: 14px; line-height: 1.5; margin: 0 0 6px; }
   .meta { font-size: 12px; color: var(--sub); display: flex; justify-content: space-between; }
@@ -94,12 +95,13 @@
 </main>
 <script>
   // 新しいゲームはこの配列の先頭に1行足すだけ。folder はこの index.html から見たフォルダ名。
+  // 大きく更新したら updated に日付を入れると、UPDATE_DAYS 日のあいだ「Update!」が付く。
   const GAMES = [
-    { folder: "hanabi", title: "夜空満開はなびチェイン", date: "2026-10-13", thumb: "thumbs/hanabi.webp", emoji: "🎆", desc: "花火玉を引っ張って撃ち上げ、夜空の火の玉をつぎつぎ連鎖させる花火パズル。星や大玉を最後に咲かせて、ひと晩の花火大会を大団円へ。" },
+    { folder: "hanabi", title: "夜空満開はなびチェイン", date: "2026-10-13", updated: "2026-10-16", thumb: "thumbs/hanabi.webp", emoji: "🎆", desc: "火をつけ忘れて打ち上げた花火玉に、1発の花火で火をつけて回る連鎖パズル。ぜんぶ咲かせて、ひと晩の花火大会を大団円へ。" },
     { folder: "monster-merge", title: "まるもんえぼりゅーしょん", date: "2026-10-12", thumb: "thumbs/monster-merge.webp", emoji: "🐉", desc: "同じモンスターがくっつくと進化する落ちものパズル。のろいの岩を砕きながら、キングドラゴンを目指そう。" },
   ];
 
-  const NEW_DAYS = 3;
+  const NEW_DAYS = 3, UPDATE_DAYS = 7;
   const grid = document.getElementById("grid");
   const today = new Date();
   for (const g of GAMES) {
@@ -120,6 +122,8 @@
     t.textContent = g.title;
     if ((today - new Date(g.date)) / 864e5 < NEW_DAYS) {
       const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; t.append(b);
+    } else if (g.updated && (today - new Date(g.updated)) / 864e5 < UPDATE_DAYS) {
+      const b = document.createElement("span"); b.className = "badge update"; b.textContent = "Update!"; t.append(b);
     }
     a.querySelector(".desc").textContent = g.desc;
     a.querySelector(".meta span").textContent = g.date;
