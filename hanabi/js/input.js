@@ -30,3 +30,8 @@ stage.addEventListener("pointerup", e => {
 });
 stage.addEventListener("pointercancel", () => { aim.on = false; aim.id = null; });
 stage.addEventListener("contextmenu", e => { e.preventDefault(); aim.on = false; aim.id = null; });
+
+// LINE などのアプリ内ブラウザは、下へのドラッグで画面ごと閉じようとする。
+// 遊ぶ場所でのタッチの移動は既定の動作（スクロール・閉じる操作）を止める。
+// タップの既定動作は止めないので、ボタンや pointer イベントの操作には影響しない。
+document.getElementById("app").addEventListener("touchmove", e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
