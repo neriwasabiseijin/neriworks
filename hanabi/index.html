@@ -25,12 +25,32 @@
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="title" class="overlay">
-      <p class="eyebrow">ver1.0.4</p>
+      <p class="eyebrow">ver1.1.0</p>
       <h1><img class="logo" src="assets/logo.webp" width="640" height="678" alt="夜空満開はなびチェイン"></h1>
-      <p class="lead">花火玉を引っ張って撃ち上げ、<br>夜空の火の玉をつぎつぎ咲かせよう。</p>
+      <p class="lead"><span>しまった、</span><span>火をつけずに</span><span>打ち上げちゃった！</span><br><span>1発の花火で、</span><span>夜空の玉を</span><span>つぎつぎ咲かせよう。</span></p>
       <p id="titleBest" class="best"></p>
       <button id="startBtn" type="button" class="primary">あそぶ</button>
       <button id="howBtn" type="button" class="secondary">あそびかた</button>
+      <button id="seedBtn" type="button" class="link" hidden>シードで遊ぶ</button>
+    </div>
+    <div id="seedBox" class="overlay" hidden>
+      <p class="eyebrow">シードで遊ぶ</p>
+      <p class="lead">シードと景を入れると、同じ夜空を何度でも遊べます。<br>遊び終わるたびに、やり直しとお手本を選べます。</p>
+      <label class="field">シード<input id="seedIn" type="text" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+      <label class="field">景<select id="stageIn"></select></label>
+      <p id="seedErr" class="note"></p>
+      <div class="res-btns">
+        <button id="seedGo" type="button" class="primary">はじめる</button>
+        <button id="seedBack" type="button" class="secondary">もどる</button>
+      </div>
+    </div>
+    <div id="practice" class="overlay" hidden>
+      <p class="eyebrow" id="prHead"></p>
+      <p class="pr-res" id="prRes"></p>
+      <button id="prAgain" type="button" class="primary">もう一度</button>
+      <button id="prAnswer" type="button" class="secondary">お手本を見る</button>
+      <button id="prNext" type="button" class="secondary">次の景へ</button>
+      <button id="prTitle" type="button" class="link">タイトルへ</button>
     </div>
     <div id="tut" hidden>
       <div class="tut-card">
@@ -43,20 +63,25 @@
         <button id="tutNext" type="button" class="tut-next">つぎへ</button>
       </div>
     </div>
+    <button id="clearAnswer" type="button" class="clear-answer" hidden>お手本を見る</button>
     <div id="result" class="overlay" hidden>
       <p class="eyebrow" id="resHead">おしまい</p>
       <div class="big" id="resScore">0</div>
+      <p id="resPen" class="res-pen" hidden></p>
       <p id="resBest" class="best"></p>
       <figure class="chair">
         <blockquote id="resComment"></blockquote>
         <figcaption>花火大会 実行委員長</figcaption>
       </figure>
-      <dl class="stats small">
-        <div><dt>とどいた所</dt><dd id="resStage"></dd></div>
-        <div><dt>最大連鎖</dt><dd id="resChain"></dd></div>
-      </dl>
-      <button id="retryBtn" type="button" class="primary">もう一回</button>
-      <button id="shareBtn" type="button" class="secondary">シェアする</button>
+      <p class="res-meta"><span id="resStage"></span><span id="resChain"></span><span id="resSeed"></span></p>
+      <div class="res-btns">
+        <button id="mercyBtn" type="button" class="primary" hidden>泣きの1回！</button>
+        <button id="retryBtn" type="button" class="primary">タイトルへ</button>
+      </div>
+      <div class="res-btns sub">
+        <button id="answerBtn" type="button" class="secondary" hidden>お手本を見る</button>
+        <button id="shareBtn" type="button" class="secondary">シェアする</button>
+      </div>
     </div>
   </div>
 </div>

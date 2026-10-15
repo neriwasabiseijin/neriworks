@@ -58,6 +58,8 @@ h1 {
   text-shadow: 0 0 18px rgba(255, 170, 110, .7), 0 0 42px rgba(255, 110, 140, .45);
 }
 .lead { margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink); }
+/* 文節の途中で折り返さない（せまい画面でも、ことばの切れ目で改行する） */
+.lead span { display: inline-block; }
 .rules {
   list-style: none; margin: 4px 0 0; padding: 12px 14px;
   display: grid; gap: 8px; text-align: left; max-width: 320px;
@@ -104,7 +106,20 @@ h1 {
 .tut-next { border: 0; color: #2a1406; background: linear-gradient(180deg, var(--gold), var(--ember)); opacity: .45; transition: opacity .3s; }
 .tut-next.ready { opacity: 1; box-shadow: 0 0 18px rgba(255, 170, 100, .5); }
 .tut-btns button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.clear-answer { position: absolute; left: 50%; bottom: 185px; transform: translateX(-50%); padding: 9px 20px; border-radius: 999px; cursor: pointer;
+  font: 700 14px var(--font-body); border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.clear-answer:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .note { margin: 0; font-size: 11px; color: var(--muted); }
+/* シードで遊ぶ */
+.link { padding: 6px 12px; border: 0; background: none; cursor: pointer; font: 500 13px var(--font-body); color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.field { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink); }
+.field input, .field select { width: 9em; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  color: var(--ink); font: 700 18px var(--font-body); letter-spacing: .08em; text-align: center; }
+.field select { width: 11em; font-size: 15px; letter-spacing: 0; }
+#seedBox, #practice { touch-action: auto; }
+.pr-res { margin: 0 0 6px; font-size: 16px; line-height: 1.6; color: var(--ink); white-space: pre-line; }
+#practice { background: linear-gradient(180deg, rgba(7, 9, 25, 0), rgba(7, 9, 25, .5) 35%, rgba(7, 9, 25, .8)); }
 @media (prefers-reduced-motion: reduce) { .primary { box-shadow: none; } }
 
 /* 実行委員長のひとこと（リザルト） */
@@ -128,3 +143,19 @@ h1 {
 /* 起動時のスプラッシュ（common/splash.js）：はなびの文字で */
 .mg-splash { font-family: var(--font-body); color: var(--ink); }
 .mg-splash .splash-icon { width: 44px; height: 44px; color: var(--gold); }
+
+/* 泣きの一回：リザルトの「タイトルへ」と並べる */
+/* 泣きの一回を押したとき：点だけを画面の真ん中に寄せ、赤い減点を出しながら点を減らす */
+#resScore { transition: transform .5s ease-in-out; }
+.res-pen { position: absolute; left: 0; right: 0; top: calc(50% + 44px); margin: 0; text-align: center;
+  font: 700 24px var(--font-body); color: #ff6b6b; text-shadow: 0 0 12px rgba(255, 60, 60, .5); }
+#result.mercying > :not(#resScore):not(#resPen) { visibility: hidden; }
+.res-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.res-btns .primary { padding: 12px 26px; }
+.btn-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 500; line-height: 1.1; }
+.res-btns .primary:has(.btn-sub) { padding-top: 6px; padding-bottom: 6px; }
+.res-btns.sub .secondary { padding: 8px 20px; font-size: 14px; }
+/* とどいた所・最大連鎖・シードを1行に（せまいときは、区切りで折り返す） */
+.res-meta { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.res-meta span { white-space: nowrap; }
+.res-meta #resStage { color: var(--ink); font-weight: 700; }

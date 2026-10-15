@@ -16,7 +16,7 @@ requestAnimationFrame(frame);
 
 // 読み込み：ロゴと文字（Web フォント）がそろうまで、黒い幕の Loading... のまま待つ
 (function boot() {
-  const SAMPLE = "夜空満開はなびチェイン第一二三四五六七八九景大詰めアンコール連鎖本日はこれにてお開き0123456789";
+  const SAMPLE = "夜空満開はなびチェイン第一二三四五六七八九景大詰めすすきの宵大玉あがる四色宴二段咲雲間花迷い道型物づくしだれ柳アンコール連鎖本日はこれにてお開き0123456789";
   const jobs = [];
   const logo = document.querySelector("#title .logo");
   if (logo) jobs.push(logo.decode ? logo.decode() : Promise.resolve());

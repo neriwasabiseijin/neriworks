@@ -5,13 +5,20 @@ function update(dt) {
   // ヒットストップ：大きな瞬間に一瞬だけ止める
   if (G.freeze > 0) { G.freeze -= dt; return; }
   G.t += dt;
+  pumpStage(3); // 次の景の盤面を、裏で少しずつ作る
+  updateRise(dt);
   for (const o of G.orbs) {
-    if (o.move) updateMover(o, dt);
-    o.x = (o.move ? o.mx : o.bx) + Math.sin(G.t * 0.5 + o.ph) * o.amp;
+    if (o.rise) continue; // 地上から昇っている途中
+    if (o.orbit) { if (o.fuse <= 0) [o.x, o.y] = ufoPos(o); continue; } // 導火線に火がついたら止まる（あわてる）
+    o.x = o.bx + Math.sin(G.t * 0.5 + o.ph) * o.amp;
     o.y = o.by + Math.cos(G.t * 0.37 + o.ph) * o.amp * 0.6;
   }
+  updateFocus(dt);
+  updateReplay(dt);
+  updateVolley();
   updateShells(dt);
   updateBursts(dt);
+  updateBooms(dt);
   updateClouds(dt);
   updateFinale(dt);
   updateTutorial(dt);
@@ -25,7 +32,7 @@ function update(dt) {
     tx.life -= dt; tx.y -= dt * 14;
     if (tx.life <= 0) G.texts.splice(i, 1);
   }
-  G.flash = Math.max(0, G.flash - dt * 1.6);
+  G.flash = Math.max(0, G.flash - dt * 1.1); // ゆっくり引かせて、点滅に見えないように
   G.shake = Math.max(0, G.shake - dt * 18);
   const glowTo = G.mode === "title" ? 0.25 : G.total ? G.popped / G.total : 0;
   G.glow += (glowTo - G.glow) * Math.min(1, dt * 1.5);
@@ -36,8 +43,10 @@ function update(dt) {
   updateCheers(dt);
   updateWait(dt);
   if (G.mode === "over" && G.timer > 0 && (G.timer -= dt) <= 0) showResult();
+  if (G.mode === "pdone" && (G.timer -= dt) <= 0) { G.mode = "pmenu"; showPractice(); }
   // ステージの切り替え：幕が下りて、裏で次の夜空を用意して、幕が上がる
   if (G.mode === "clear" && (G.timer -= dt) <= 0) {
+    $("clearAnswer").hidden = true;
     if (nightEnds()) startEnding(false);
     else { G.mode = "trans"; G.trans = { out: true, t: 0 }; }
   }
@@ -54,56 +63,108 @@ function update(dt) {
   }
 }
 
-// 1発ぶんの連鎖が終わったとき。
-// 目標に届いても、玉が残っていて弾もあれば続けられる（3発あれば必ず全部開ける配置なので、満開をねらえる）
+// 打ち上げた連鎖が出つくしたとき。打ち上げは1つの景に1回きりなので、ここでその景の結果が決まる
 function endOfShot() {
+  if (!G.fired) return;
   const n = G.chainNow;
-  const ends = G.orbs.length === 0 || G.shots === 0;
   if (G.pending) {
     G.pending = false;
-    if (!ends) cheerShot(n);
-    if (G.chainNow === 3) addText("3連鎖！", W / 2, 230, 30, 1.2, [255, 236, 170]);
-    if (!G.reached && G.popped >= G.target && G.orbs.length > 0 && G.shots > 0) {
-      G.reached = true;
-      addText("目標達成！", W / 2, 300, 30, 1.8, [255, 236, 170]);
-      addText(`のこり${G.orbs.length}こ　全部開けば満開ボーナス`, W / 2, 336, 14, 2.2, [255, 220, 200]);
-      sfx.clear();
-    }
+    if (n === 3) addText("3連鎖！", W / 2, 230, 30, 1.2, [255, 236, 170]);
   }
+  if (G.practice) return practiceEnd();
   if (G.orbs.length === 0) {
     // 満開：全部開いた
-    const one = G.shots === SHOTS - 1;
-    const bonus = 2000 + G.shots * 1000 + (one ? 3000 : 0);
+    const bonus = 3000;
     G.score += bonus;
     G.perfects = (G.perfects || 0) + 1;
-    addStamp("満開", W / 2, 280, 84, [255, 200, 225], one ? "一発" : "");
+    addStamp("満開", W / 2, 280, 84, [255, 200, 225]);
     addText(`満開ボーナス +${bonus}`, W / 2, 350, 17, 1.8, [255, 236, 210]);
     sfx.sky();
     sfx.clear();
     G.mode = "clear";
     G.timer = 2.8;
     G.lastPerfect = true;
-    cheerStage(one ? "ippatsu" : "perfect", n);
+    cheerStage("perfect", n);
     if (earnsEncore()) { cheerEncore(); G.timer = 3.4; }
-  } else if (G.shots === 0) {
-    if (G.popped >= G.target) {
-      addText("おみごと", W / 2, 300, 34, 1.6, [255, 236, 170]);
-      if (!G.reached) sfx.clear();
-      G.mode = "clear";
-      G.timer = 2.4;
+  } else {
+    if (G.stage > PROGRAM.length) {
+      // アンコールは満開でなければミス。泣きの一回が残っていればリザルトで選べる。なければ大団円でお開き
       G.lastPerfect = false;
+      if (G.encoreRetries < ENCORE_MERCY) {
+        G.mode = "over";
+        G.offerMercy = true; G.encoreOffer = true;
+        endWait(); G.board = null;
+        G.timer = 1.2;
+        cheerStage(G.popped >= G.target ? "clear" : "over", n);
+      } else startEnding(true);
+    } else if (G.popped >= G.target) {
+      addText("おみごと", W / 2, 300, 34, 1.6, [255, 236, 170]);
+      sfx.clear();
+      G.mode = "clear";
+      G.timer = 3.6; // 「お手本を見る」を押せるよう、少し長めに
+      G.lastPerfect = false;
+      $("clearAnswer").hidden = !G.snap || !G.snap.answer;
       cheerStage(n <= 2 ? "weak" : "clear", n);
-    } else if (G.stage > PROGRAM.length) {
-      // アンコールは失敗にしない：届かなくても大団円でお開き
-      startEnding(true);
     } else {
       // 観客のため息を見せてからリザルトへ
       G.mode = "over";
+      G.lastPerfect = false;
+      G.offerMercy = true; // 泣きの一回（何度でも。2回目からは点を引く）
       endWait(); G.board = null;
       G.timer = 1.2; // showResult がさらに0.7秒待つ
       cheerStage("over", n);
     }
   }
+}
+
+// お手本：しくじった景の、始まったときの盤面で、満開にできる1発を打ち上げて見せる。
+// 点や記録は動かさない（見終わったら、リザルトにもどる）
+function startReplay() {
+  const s = G.snap;
+  G.replay = { t: 0, end: 0, keep: { score: G.score, perfects: G.perfects, maxChain: G.maxChain, popped: G.popped, total: G.total, target: G.target },
+    aim: aimFor(s.answer.x, s.answer.y) };
+  // お手本では玉を揺らさない（計算どおりにつながるように）
+  G.orbs = s.orbs.map(o => ({ ...o, rise: null, x: o.bx, y: o.by, amp: 0, orbit: null }));
+  G.clouds = []; // 雲は晴らしておく（答えが見えるように）
+  G.queue = s.queue.slice();
+  G.shots = SHOTS; G.shells = []; G.bursts = []; G.texts = []; G.stamps = []; G.booms = [];
+  G.total = G.orbs.length; G.popped = 0; G.chainNow = 0; G.reached = false;
+  G.plans = []; G.volley = null; G.fired = false; G.fin = null; G.finDone = false; G.wreck = null;
+  G.board = null; G.wait = null; G.focus = null; G.rise = null; G.trans = null;
+  G.mode = "replay";
+}
+
+function updateReplay(dt) {
+  const r = G.replay;
+  if (!r || G.mode !== "replay") return;
+  r.t += dt;
+  if (r.t > 1.2 && !G.plans.length && !G.fired) planShot(r.aim.a, r.aim.w);
+  if (r.t > 2.4 && !G.fired) startVolley();
+  if (!G.fired || busy() || G.shells.length) return;
+  if ((r.end += dt) < 1.6) return;
+  Object.assign(G, r.keep);
+  G.pending = false; G.chainNow = 0; // お手本の連鎖を持ち越さない
+  G.replay = null;
+  G.orbs = []; G.bursts = []; G.texts = []; G.stamps = [];
+  if (G.practice) { G.mode = "pmenu"; showPractice(); return; }
+  if (G.replayThen === "clear") { G.replayThen = null; G.mode = "clear"; G.timer = 0.4; return; } // クリアのあとに見たお手本：次の景へ
+  G.mode = "over";
+  showResult();
+}
+
+// シードで遊んでいるとき：景が終わったら結果だけ見せて、やり直し・お手本・次の景のメニューへ（点は記録しない）
+function practiceEnd() {
+  G.lastPopped = G.popped;
+  if (G.orbs.length === 0) {
+    G.score += 3000;
+    addStamp("満開", W / 2, 280, 84, [255, 200, 225]);
+    sfx.sky(); sfx.clear();
+  } else if (G.popped >= G.target) {
+    addText("おみごと", W / 2, 300, 34, 1.6, [255, 236, 170]);
+    sfx.clear();
+  } else addText("とどかず…", W / 2, 300, 30, 1.6, [200, 210, 255]);
+  G.mode = "pdone";
+  G.timer = G.orbs.length === 0 ? 2.4 : 1.6;
 }
 
 // タイトルとリザルトの裏で、勝手に花火を上げておく

@@ -3,7 +3,8 @@
 // 第九景「大詰め」やアンコールを満開で終えると、観客のアンコールで次の演目へ（最大 ENCORES 回）。
 // そうでなければ（アンコールで目標に届かなくても）、スターマインの大団円で気持ちよくお開きにする。
 
-const ENCORES = 3;
+const ENCORES = 99;
+const ENCORE_MERCY = 3; // アンコールに入ってから使える泣きの一回の数
 const ENDING_LEN = 4.8;
 
 const encoresOf = stage => Math.max(0, stage - PROGRAM.length);
@@ -21,6 +22,7 @@ function startEnding(missed) {
   endWait(); G.board = null;
   G.mode = "ending";
   G.ended = true;
+  G.offerMercy = false; G.encoreOffer = false;
   G.endT = 0;
   G.endNext = 0.3;
   G.endBig = false; G.endSnap = false;
@@ -42,7 +44,7 @@ function updateEnding(dt) {
     G.endBig = true;
     burst(W / 2, 230, 3, 1, 3.4, 0, true);
     sparks(W / 2, 230, [255, 210, 140], 210, 0, 1.4, 120, 3.2);
-    G.flash = 1; G.shake = 8;
+    G.flash = 0.7; G.shake = 8;
     sfx.finale(12);
     const n = encoresOf(G.stage);
     addStamp("大団円", W / 2 + (n ? 44 : 0), 260, 84, [255, 214, 150], n ? `アンコール${n}回` : "");
