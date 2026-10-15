@@ -120,10 +120,11 @@
     } else thumb.textContent = g.emoji;
     const t = a.querySelector(".label-title");
     t.textContent = g.title;
-    if ((today - new Date(g.date)) / 864e5 < NEW_DAYS) {
-      const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; t.append(b);
-    } else if (g.updated && (today - new Date(g.updated)) / 864e5 < UPDATE_DAYS) {
+    // 更新したばかりなら「Update!」を優先（公開直後に更新しても NEW に隠れないように）
+    if (g.updated && (today - new Date(g.updated)) / 864e5 < UPDATE_DAYS) {
       const b = document.createElement("span"); b.className = "badge update"; b.textContent = "Update!"; t.append(b);
+    } else if ((today - new Date(g.date)) / 864e5 < NEW_DAYS) {
+      const b = document.createElement("span"); b.className = "badge"; b.textContent = "NEW"; t.append(b);
     }
     a.querySelector(".desc").textContent = g.desc;
     a.querySelector(".meta span").textContent = g.date;
