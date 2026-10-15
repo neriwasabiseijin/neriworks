@@ -14,7 +14,7 @@ function aimFrom(e) {
 }
 
 stage.addEventListener("pointerdown", e => {
-  if (G.mode !== "play" || e.button === 2) return;
+  if ((G.mode !== "play" && !drilling()) || e.button === 2) return; // あそびかたの「やってみよう」でも引ける
   sfx.unlock();
   endWait(); // 合間でも、引っぱり始めればすぐ始まる
   const p = toWorld(e.clientX, e.clientY);
@@ -25,7 +25,7 @@ stage.addEventListener("pointermove", e => { if (aim.id === e.pointerId) aimFrom
 stage.addEventListener("pointerup", e => {
   if (aim.id !== e.pointerId) return;
   aimFrom(e);
-  if (aim.ok) fire(aim.angle, aim.power);
+  if (aim.ok) fire(aim.angle, aim.power); // はなすと打ち上がる
   aim.on = false; aim.id = null;
 });
 stage.addEventListener("pointercancel", () => { aim.on = false; aim.id = null; });

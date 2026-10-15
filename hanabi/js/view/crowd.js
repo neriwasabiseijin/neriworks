@@ -3,23 +3,20 @@
 
 const FONT_DOT = '"DotGothic16", "MS Gothic", monospace';
 
-// 1発ごとの感想（その1発で開いた数で段階を分ける）
+// 連鎖の大きさごとの歓声（開いた数で段階を分ける）
 const CHEER_SHOT = [
-  { min: 0, n: 1, lines: ["あれ？", "どこ撃った？", "おしい…", "ドンマイ！", "あらら"] },
+  { min: 0, n: 1, lines: ["あれ？", "あれれ…", "おしい…", "ドンマイ！", "あらら"] },
   { min: 1, n: 1, lines: ["おっ", "きれい〜", "いいね", "ふむふむ", "まだまだ！"] },
   { min: 3, n: 2, lines: ["たまや〜！", "いいぞー！", "おお〜っ", "つながった！", "きれ〜い！"] },
   { min: 5, n: 2, lines: ["かぎや〜！", "すごい！", "うおおお！", "連鎖だ！", "ブラボー！"] },
   { min: 8, n: 3, lines: ["なにこれ！？", "すっげえええ！", "職人だ…", "鳥肌立った", "天才か！"] },
   { min: 12, n: 3, lines: ["伝説だ…", "ひぃぃ！", "神ーーっ！", "もう一回見たい！", "語り継ぐわ"] },
 ];
-// 1発で盤面の大半が消えたときの一言
-const CHEER_SWEEP = ["半分消えた！？", "ごっそりいった！", "空がひらけた！"];
 
 // ステージの終わりの感想（盤面の消えっぷりで分ける）
 const CHEER_STAGE = {
-  ippatsu: ["一発で全部！？", "ありえない…", "今日イチ！", "拍手ーーっ！", "目に焼きついた"],
   perfect: ["満開だー！", "夜空まるごと！", "完璧！", "いい夜だ〜", "全部開いた！"],
-  almost: ["あと少しで満開…", "おしい！ほぼ満開", "おみごと！", "あと1こ〜！"],
+  almost: ["あと少しで満開…", "おしい！ほぼ満開", "おみごと！", "あとちょっと〜！"],
   clear: ["よかったよー", "たまや〜", "次も見せて！", "いい感じ！"],
   weak: ["しまらないなぁ…", "最後ちょっと…", "あれで終わり？", "うーん", "まあまあかな"],
   over: ["あ〜…", "まだ見たかった", "また来るね", "次こそ！", "ドンマイ…"],
@@ -36,10 +33,6 @@ const CHEER_SLOTS = [
 const CHEER_NEXT = ["次はどうかな？", "わくわく…", "まだまだ見たい！", "次も頼むよー！", "どんなのが来る？", "始まるぞ！", "待ってました！"];
 const CHEER_FIRST = ["始まるよ！", "たのしみ〜", "いい場所とれた！", "たまやの準備OK"];
 // 新しいしかけが出るステージは、それに気づいた一言をまぜる
-const CHEER_NEWS = {
-  2: ["大きいのがある！"], 3: ["色が増えた！"], 4: ["かたそうな玉だ…"],
-  5: ["雲が出てきた…"], 6: ["なにか流れてる！"],
-};
 // 人が増えたときの一言（だんだん大げさに）
 const CHEER_GROW = ["人が集まってきた！", "にぎわってきたね", "すごい人だかり！", "押さないで〜", "町じゅう来てる！"];
 
@@ -93,24 +86,16 @@ function say(lines, power) {
   crowd.power = power;
 }
 
-function cheerShot(n) {
-  let tier = 0;
-  CHEER_SHOT.forEach((c, i) => { if (n >= c.min) tier = i; });
-  const lines = pickLines(CHEER_SHOT[tier].lines, CHEER_SHOT[tier].n);
-  if (G.total && n / G.total >= 0.5 && n >= 4) lines[lines.length - 1] = pick(CHEER_SWEEP);
-  say(lines, Math.min(1, tier / 4));
-}
-
-// kind: ippatsu / perfect / clear / over。lastShot は最後の1発で開いた数
-function cheerStage(kind, lastShot) {
+// kind: perfect / clear / weak / over。chain はその景の連鎖数
+function cheerStage(kind, chain) {
   if (kind === "weak" && G.total - G.popped <= Math.max(1, G.total * 0.1)) kind = "almost";
   if (kind === "clear" && G.total - G.popped <= Math.max(1, G.total * 0.1)) kind = "almost";
-  const power = { ippatsu: 1, perfect: 1, almost: 0.6, clear: 0.4, weak: 0, over: 0 }[kind];
+  const power = { perfect: 1, almost: 0.6, clear: 0.4, weak: 0, over: 0 }[kind];
   const lines = pickLines(CHEER_STAGE[kind], kind === "over" || kind === "weak" ? 2 : 3);
-  // 最後の1発が大きければ、その歓声もひとつ混ぜる
-  if (kind !== "over" && kind !== "weak" && lastShot >= 5) {
+  // 連鎖が大きければ、その歓声もひとつ混ぜる
+  if (kind !== "over" && kind !== "weak" && chain >= 5) {
     let tier = 0;
-    CHEER_SHOT.forEach((c, i) => { if (lastShot >= c.min) tier = i; });
+    CHEER_SHOT.forEach((c, i) => { if (chain >= c.min) tier = i; });
     lines[0] = pick(CHEER_SHOT[tier].lines);
   }
   say(lines, power);
@@ -128,8 +113,6 @@ function cheerOne(s) {
 // 演目の合間：煙待ちのざわめき
 function cheerNext(first) {
   const lines = pickLines(first ? CHEER_FIRST : CHEER_NEXT, 2);
-  const news = CHEER_NEWS[G.stage];
-  if (news) lines[1] = pick(news);
   say(lines, 0.25);
 }
 
@@ -194,18 +177,19 @@ function drawCheers(c) {
     const y = Math.round(b.y - h / 2 - (b.t < 0.12 ? 0 : Math.min(4, (b.t - 0.12) * 6)));
     c.globalAlpha = a;
     // 縁（濃い色）→ 中身（白）
+    const fill = "#fffaf0";
     c.fillStyle = "#1a1430";
     c.fillRect(x + 2, y - 2, w - 4, h + 4);
     c.fillRect(x - 2, y + 2, w + 4, h - 4);
     c.fillRect(x, y, w, h);
-    c.fillStyle = "#fffaf0";
+    c.fillStyle = fill;
     c.fillRect(x + 2, y, w - 4, h);
     c.fillRect(x, y + 2, w, h - 4);
     // しっぽ（観客のほうへ）
     const tx = Math.round(Math.max(x + 8, Math.min(x + w - 14, b.x - 3)));
     c.fillStyle = "#1a1430";
     c.fillRect(tx - 2, y + h, 12, 4); c.fillRect(tx, y + h + 4, 8, 4); c.fillRect(tx + 2, y + h + 8, 4, 4); c.fillRect(tx + 4, y + h + 12, 2, 2);
-    c.fillStyle = "#fffaf0";
+    c.fillStyle = fill;
     c.fillRect(tx, y + h - 2, 8, 4); c.fillRect(tx + 2, y + h + 2, 4, 4); c.fillRect(tx + 4, y + h + 6, 0 + 2, 4);
     if (pop === 1) {
       c.fillStyle = "#2a1f45";

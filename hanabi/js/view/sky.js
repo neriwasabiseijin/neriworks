@@ -50,7 +50,13 @@ function drawSky(c, t, glow) {
   c.drawImage(skyCv, 0, 0, W, H);
   // 演目が進むほど夜がふけて、空が深くなる
   const late = Math.min(0.4, Math.max(0, (G.stage || 1) - 1) * 0.045);
-  if (late > 0 && G.mode !== "title") { c.fillStyle = `rgba(2,2,10,${late})`; c.fillRect(0, 0, W, 560); }
+  // 地平線のあたりで切れ目が見えないよう、下へ向かってなだらかに薄める
+  if (late > 0 && G.mode !== "title") {
+    const g = c.createLinearGradient(0, 470, 0, 650);
+    g.addColorStop(0, `rgba(2,2,10,${late})`);
+    g.addColorStop(1, "rgba(2,2,10,0)");
+    c.fillStyle = g; c.fillRect(0, 0, W, 650);
+  }
   for (const s of stars) {
     const a = 0.35 + 0.35 * Math.sin(t * 1.7 + s.ph);
     c.fillStyle = `rgba(220,225,255,${a})`;

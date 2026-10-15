@@ -1,24 +1,28 @@
 "use strict";
 // 大連鎖のしめくくり：連鎖が出つくしたら、一拍しずかになってから、まんなかで特大の花火が「ドカーン」
 
-// 連鎖がもう広がらない（輪がすべて引火できる時間を過ぎ、導火線も残っていない）
+// 連鎖がもう広がらない（輪がすべて引火できる時間を過ぎ、導火線も残っていない）。
+// しだれは垂れていく間（SHIDARE_T）ずっと火がつくので、burstLife で待つ
 function chainSettled() {
-  return G.shells.length === 0 && !fusing() && G.bursts.every(b => b.demo || b.t > b.grow + RING_HOLD);
+  return G.shells.length === 0 && !fusing() && G.bursts.every(b => b.demo || b.t > burstLife(b.shape, b.grow));
 }
 
 function updateFinale(dt) {
-  if ((G.mode === "play" || G.mode === "tutorial") && G.pending && !G.fin && !G.finDone && G.chainNow >= FINALE_MIN && chainSettled()) {
+  if ((G.mode === "play" || G.mode === "tutorial" || G.mode === "replay") && G.pending && !G.fin && !G.finDone && G.chainNow >= FINALE_MIN && chainSettled()) {
     G.finDone = true;
     G.fin = { t: 0, x: G.chainX / G.chainNow, y: G.chainY / G.chainNow, n: G.chainNow, fired: false, at: waitToBeat(0.4) };
     G.fin.beat = beatAt(G.fin.at);
     sfx.hush();
   }
+  // 震えていた UFO は、連鎖の数を伝える瞬間にボカーン（小さな連鎖なら、連鎖が出つくしたとき）
+  if (G.wreck && !G.fin && chainSettled() && (G.finDone || G.chainNow < FINALE_MIN || G.mode !== "play")) blowWreck();
   const f = G.fin;
   if (!f) return;
   f.t += dt;
   if (!f.fired && beatLeft(f.beat) <= 0) {
     f.fired = true;
     bigBurst(f.x, Math.min(f.y, 360), f.n);
+    blowWreck();
   }
   if (f.t > f.at + 1.8) G.fin = null;
 }
@@ -41,7 +45,7 @@ function bigBurst(x, y, n) {
   // 内側に色の輪をもう一つ
   sparks(x, y, [255, 140, 170], R * 0.5, 4, 0.7, 60, 2.4);
   lightUp(x, y, [255, 200, 120], R * 1.4);
-  G.flash = 0.7;
+  G.flash = 0.5;
   G.shake = Math.min(14, 6 + n * 0.5);
   G.freeze = 0.09;
   G.glow = Math.min(1, G.glow + 0.4);

@@ -10,36 +10,64 @@ function draw() {
   c.save();
   if (G.shake > 0) c.translate(rnd(-G.shake, G.shake), rnd(-G.shake, G.shake));
   drawSky(c, G.t, G.glow);
+  if (G.mode === "play") drawFocusCount(c); // のこり秒数は夜空のいちばん奥（花火の明かりよりも奥）
   if (G.dim > 0.01) { c.fillStyle = `rgba(2,3,12,${G.dim})`; c.fillRect(-20, -20, W + 40, H + 40); }
   drawLights(c);
+  drawStamps(c, true); // 「晴ッ」は火の玉や花火より奥に
   drawRings(c);
+  drawLinks(c);
   drawOrbs(c);
+  if (G.wreck) drawUfo(c, { x: G.wreck.x, y: G.wreck.y, fuse: 1 }, COLORS[G.wreck.color].rgb, 0);
   drawClouds(c);
   drawShells(c);
   drawSparks(c);
-  if (G.mode === "play") { drawAim(c); drawLauncher(c); drawHud(c); }
+  drawBooms(c);
+  if (G.mode === "play") { drawFocus(c); drawAim(c); drawLauncher(c); drawHud(c); }
+  if (G.mode === "replay") { drawReplay(c); drawLauncher(c); }
   if (G.mode === "clear" || G.mode === "trans") drawHud(c);
-  if (G.mode === "tutorial") { drawAim(c); drawLauncher(c); drawTutorial(c); }
+  if (G.mode === "tutorial") { drawAim(c); drawLauncher(c); }
   drawTexts(c);
   drawBoard(c);
-  drawStamps(c);
+  drawStamps(c, false);
   drawCurtain(c);
   if (G.mode !== "title" && G.mode !== "tutorial") drawCrowd(c); // 観客は幕の手前に残す（切り替えの間もそこにいる）
+  if (G.mode === "tutorial") drawTutorial(c); // 指のお手本は観客より手前
   drawCheers(c);
   c.restore();
   if (G.flash > 0) { c.fillStyle = `rgba(255,245,230,${G.flash * 0.35})`; c.fillRect(0, 0, W, H); }
+}
+
+// 導火線に火がついた玉と、火をつけた輪の中心を線で結ぶ。同じ色でつながった（輪が育つ）ときは、その色で太く光らせる
+function drawLinks(c) {
+  c.save();
+  c.globalCompositeOperation = "lighter";
+  c.lineCap = "round";
+  for (const o of G.orbs) {
+    const b = o.from;
+    if (!(o.fuse > 0) || !b) continue;
+    const same = o.color === b.color, k = 1 - o.fuse / o.fuseMax;
+    c.strokeStyle = same ? rgba(COLORS[o.color].rgb, 0.75 - k * 0.3) : `rgba(255,255,255,${0.22 - k * 0.1})`;
+    c.lineWidth = same ? 3 : 1;
+    c.beginPath(); c.moveTo(b.x, b.y); c.lineTo(o.x, o.y); c.stroke();
+    if (same) { // 育つ印：玉のまわりに、その色の輪をひとつ
+      c.lineWidth = 2;
+      c.beginPath(); c.arc(o.x, o.y, ORB_TYPES[o.type].r * (1.8 + k * 0.8), 0, Math.PI * 2); c.stroke();
+    }
+  }
+  c.restore();
 }
 
 function drawOrbs(c) {
   c.save();
   c.globalCompositeOperation = "lighter";
   for (const o of G.orbs) {
+    if (o.rise && G.rise && G.rise.t < o.rise.at) continue; // まだ地上（昇る前）
     const t = ORB_TYPES[o.type], rgb = COLORS[o.color].rgb;
     // 導火線に火がついた玉は、小さくなりながら光が消えていく（溜め）。消えきった瞬間に開く
     const k = o.fuse > 0 ? 1 - o.fuse / o.fuseMax : 0;
     const fade = o.fuse > 0 ? (1 - k * 0.88) * (0.75 + Math.random() * 0.25) : 1;
     const pulse = (1 + Math.sin(G.t * 3 + o.ph) * 0.08) * (1 - k * 0.35);
-    const r = t.r * pulse;
+    const r = t.r * pulse * (o.type === "ufo" ? 0.6 : 1);
     const ox = o.x, oy = o.y;
     const g = c.createRadialGradient(ox, oy, 0, ox, oy, r * 2.6);
     g.addColorStop(0, rgba([255, 255, 255], 0.95 * fade));
@@ -48,32 +76,103 @@ function drawOrbs(c) {
     g.addColorStop(1, rgba(rgb, 0));
     c.fillStyle = g;
     c.beginPath(); c.arc(ox, oy, r * 2.6, 0, Math.PI * 2); c.fill();
-    if (o.type === "star") drawStar(c, ox, oy, r * 1.25, rgba([255, 250, 220], 0.9 * fade));
+    if (o.type === "star") drawGlitter(c, ox, oy, r, fade);
     if (o.type === "double" && o.hits === 0) { // 殻：1回当てると割れる
       c.strokeStyle = rgba([235, 235, 255], 0.75); c.lineWidth = 2;
       c.setLineDash([5, 4]);
       c.beginPath(); c.arc(o.x, o.y, r * 1.6, G.t, G.t + Math.PI * 2); c.stroke();
       c.setLineDash([]);
     }
-    if (o.move) { // 流れ玉：進む向きと逆に尾
-      const d = -Math.sign(o.move);
-      const g2 = c.createLinearGradient(o.x, 0, o.x + d * 34, 0);
-      g2.addColorStop(0, rgba(rgb, 0.5)); g2.addColorStop(1, rgba(rgb, 0));
-      c.fillStyle = g2; c.fillRect(Math.min(o.x, o.x + d * 34), o.y - 3, 34, 6);
-    }
+    if (o.type === "ufo") drawUfo(c, o, rgb, k);
+    if (SHAPES[o.type]) drawRays(c, o, rgb, r, fade);
     if (o.type === "big") { c.strokeStyle = rgba(rgb, 0.6); c.lineWidth = 1.5; c.beginPath(); c.arc(o.x, o.y, r * 1.3, 0, Math.PI * 2); c.stroke(); }
   }
   c.restore();
 }
 
-function drawStar(c, x, y, r, color) {
-  c.fillStyle = color;
+// UFO：観客や町並みと同じドット絵（2px のマス）。灯りは自分の色（その色の玉としてつながる）。
+// 導火線に火がつくと、あわててガタガタ震える
+const UFO_ART = [
+  "......gggg......",
+  ".....gGGGGg.....",
+  "....gGGGGGGg....",
+  "..ssssssssssss..",
+  ".sSSSSSSSSSSSSs.",
+  "sSLSSLSSLSSLSSSs",
+  ".sddddddddddddd.",
+  "...dddddddddd...",
+];
+const UFO_PAL = { g: "#5f8f78", G: "#b8ffd8", s: "#9aa0b8", S: "#e6e9f3", d: "#5c6178" };
+function drawUfo(c, o, rgb, k) {
+  const px = 2, w = UFO_ART[0].length * px, h = UFO_ART.length * px;
+  const shake = o.fuse > 0 ? (Math.random() < 0.5 ? -2 : 2) : 0;
+  const x0 = Math.round((o.x - w / 2) / px) * px + shake, y0 = Math.round((o.y - h / 2) / px) * px;
+  c.save();
+  c.globalCompositeOperation = "source-over";
+  c.globalAlpha = 1 - k * 0.5;
+  let li = 0;
+  UFO_ART.forEach((row, yy) => {
+    for (let xx = 0; xx < row.length; xx++) {
+      const ch = row[xx];
+      if (ch === ".") continue;
+      if (ch === "L") { // 灯り：順番に点滅
+        const on = ((G.t * 6 | 0) + li++) % 3 !== 0;
+        c.fillStyle = rgba(rgb, on ? 1 : 0.35);
+      } else c.fillStyle = UFO_PAL[ch];
+      c.fillRect(x0 + xx * px, y0 + yy * px, px, px);
+    }
+  });
+  c.restore();
+}
+
+// ススキ玉・型物・しだれ：どう開くかが見えるしるし。ススキは向きに金色の穂、型物は☆のふち、しだれは下へ垂れる尾
+function drawRays(c, o, rgb, r, fade) {
+  const sh = SHAPES[o.type], wob = 1 + Math.sin(G.t * 4 + o.ph) * 0.06;
+  c.lineCap = "round";
+  if (sh.hw) {
+    c.strokeStyle = rgba([255, 220, 150], 0.85 * fade);
+    for (const f of [-sh.hw * 0.7, 0, sh.hw * 0.7]) {
+      const len = r * (f ? 2.6 : 3.3) * wob;
+      c.lineWidth = f ? 1.6 : 2.2;
+      c.beginPath();
+      c.moveTo(o.x + Math.cos(o.rot + f) * r * 0.9, o.y + Math.sin(o.rot + f) * r * 0.9);
+      c.lineTo(o.x + Math.cos(o.rot + f) * len, o.y + Math.sin(o.rot + f) * len);
+      c.stroke();
+    }
+  } else if (sh.inner) {
+    c.strokeStyle = rgba([255, 250, 230], 0.85 * fade);
+    c.lineWidth = 1.6;
+    starPath(c, o.x, o.y, r * 2.2 * wob, r * 2.2 * wob * sh.inner / sh.len, o.rot);
+    c.stroke();
+  } else if (sh.drop) {
+    c.strokeStyle = rgba([255, 220, 150], 0.8 * fade);
+    c.lineWidth = 1.5;
+    for (const dx of [-0.8, 0, 0.8]) {
+      c.beginPath();
+      c.moveTo(o.x + dx * r, o.y + r * 0.6);
+      c.quadraticCurveTo(o.x + dx * r * 1.6, o.y + r * 1.2, o.x + dx * r * 1.5, o.y + r * (dx ? 2.4 : 2.9) * wob);
+      c.stroke();
+    }
+  }
+}
+
+// ☆の形の道筋（先の長さ L、くびれ Li、rot に先を向ける）
+function starPath(c, x, y, L, Li, rot) {
   c.beginPath();
   for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+    const a = rot + i * Math.PI / 5, rr = i % 2 ? Li : L;
     c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
   }
-  c.fill();
+  c.closePath();
+}
+
+// 錦玉：まわりを金の粒がきらきら回る（☆は型物の形なので使わない）
+function drawGlitter(c, x, y, r, fade) {
+  for (let i = 0; i < 6; i++) {
+    const a = G.t * 0.9 + i * Math.PI / 3, tw = 0.5 + 0.5 * Math.sin(G.t * 5 + i * 2.1);
+    c.fillStyle = rgba([255, 215, 120], (0.45 + 0.55 * tw) * fade);
+    c.beginPath(); c.arc(x + Math.cos(a) * r * 1.6, y + Math.sin(a) * r * 1.6, 1.3 + tw * 1.1, 0, Math.PI * 2); c.fill();
+  }
 }
 
 // 光の輪：どこまで届くかが見えるように、縁をうっすら描く
@@ -83,15 +182,42 @@ function drawRings(c) {
   for (const b of G.bursts) {
     const k = Math.min(1, b.t / b.grow);
     const r = b.R * easeOut(k);
-    const end = b.grow + RING_HOLD;
+    const end = burstLife(b.shape, b.grow);
     const a = b.t < end ? 0.22 : Math.max(0, 0.22 - (b.t - end) * 0.6);
     const rgb = COLORS[b.color].rgb;
+    const tri = b.shape && b.shape.tri; // ススキは丸い輪を出さない
+    if (!tri) {
     const g = c.createRadialGradient(b.x, b.y, r * 0.2, b.x, b.y, r);
     g.addColorStop(0, rgba(rgb, 0));
     g.addColorStop(0.85, rgba(rgb, a * 0.18));
     g.addColorStop(1, rgba(rgb, a * 0.5));
     c.fillStyle = g;
     c.beginPath(); c.arc(b.x, b.y, r, 0, Math.PI * 2); c.fill();
+    // ふちをくっきり：花火が重なっても、どの色の輪かが分かるように。同じ色で育った輪ほど太い。
+    // 広がっている間だけ出し、広がりきったらすぐ消す（残ると目立ちすぎる）
+    const edge = Math.max(0, 1 - Math.max(0, b.t - b.grow) / 0.12);
+    if (edge > 0) {
+      c.strokeStyle = rgba(rgb, 0.57 * edge);
+      c.lineWidth = 1 + (b.mult - 1) * 2.2;
+      c.beginPath(); c.arc(b.x, b.y, r, 0, Math.PI * 2); c.stroke();
+    }
+    }
+    // 形のある花火：届く範囲をうっすら描く
+    if (b.shape) {
+      const sh = b.shape;
+      c.fillStyle = rgba(rgb, a * 0.16);
+      c.strokeStyle = rgba(rgb, a * 0.6);
+      c.lineWidth = 1.5;
+      const rs = reachAt(b.R, sh, b.grow, b.t).r; // 火の粉の広がりに合わせる
+      if (sh.tri) {
+        c.beginPath(); shapeOutline(c, b.x, b.y, rs, sh, b.rot); c.fill();
+      } else if (sh.inner) {
+        starPath(c, b.x, b.y, rs * sh.len, rs * sh.inner, b.rot); c.fill(); c.stroke();
+      } else if (sh.drop) {
+        const q = reachAt(b.R, sh, b.grow, b.t); // いまの広がりと、垂れた長さ
+        c.beginPath(); shapeOutline(c, b.x, b.y, q.r, sh, 0, q.dv); c.fill();
+      }
+    }
   }
   c.restore();
 }
@@ -118,11 +244,15 @@ function drawShells(c) {
   c.restore();
 }
 
+
+// 次に狙いを決める玉（決めた数だけ先の玉）
+const aimColor = () => G.queue[G.plans ? G.plans.length : 0];
+
 // 引っ張っている間：てっぺんまでの点線と、開く大きさの輪
 function drawAim(c) {
-  if (!aim.on || busy() || G.shots <= 0) return;
+  if (!aim.on || busy() || G.rise || G.fired || aimColor() === undefined) return;
   const ap = apexOf(aim.angle, aim.power);
-  const color = COLORS[G.queue[0]].rgb;
+  const color = COLORS[aimColor()].rgb;
   c.save();
   c.fillStyle = "rgba(255,240,220,.75)";
   const steps = 18;
@@ -135,7 +265,36 @@ function drawAim(c) {
   c.strokeStyle = rgba(color, 0.8);
   c.lineWidth = 1.5;
   c.beginPath(); c.arc(ap.x, ap.y, G.p.ring, 0, Math.PI * 2); c.stroke();
+  // 輪にふれる玉が開いたときの輪も、うすい点線で見せる（同じ色なら育った大きさで。うすさは同じ）
+  for (const o of G.orbs) {
+    const t = ORB_TYPES[o.type];
+    if (o.hits + 1 < t.hits || !shapeHit(ap.x, ap.y, G.p.ring, null, 0, o.x, o.y, t.r)) continue;
+    const same = o.color === aimColor();
+    const r = G.p.ring * t.ring * (same ? SAME_COLOR_GROW : 1), rgb = COLORS[o.color].rgb;
+    c.strokeStyle = rgba(rgb, 0.35);
+    c.lineWidth = 1;
+    c.setLineDash([3, 6]);
+    c.beginPath();
+    shapeOutline(c, o.x, o.y, r, SHAPES[o.type], o.rot || 0);
+    c.stroke();
+  }
   c.restore();
+}
+
+// 開いたときに届く範囲のふち（丸い輪、または形のある開き方）
+function shapeOutline(c, x, y, r, sh, rot, fall) {
+  if (!sh) { c.arc(x, y, r, 0, Math.PI * 2); return; }
+  if (sh.tri) { // ススキ：玉から rot の向きへのびる三角形
+    const L = r * sh.len, w = L * Math.tan(sh.hw), cx = Math.cos(rot), cy = Math.sin(rot);
+    c.moveTo(x, y);
+    c.lineTo(x + cx * L - cy * w, y + cy * L + cx * w);
+    c.lineTo(x + cx * L + cy * w, y + cy * L - cx * w);
+    c.closePath();
+  } else if (sh.inner) starPath(c, x, y, r * sh.len, r * sh.inner, rot);
+  else if (sh.drop) { // 丸い輪を下へ垂れた長さぶん引きのばしたカプセル（省くと、最後に届く範囲）
+    const rr = fall === undefined ? r * SHIDARE_SPREAD : r, f = fall === undefined ? SHIDARE_FALL : fall;
+    c.arc(x, y, rr, Math.PI, Math.PI * 2); c.lineTo(x + rr, y + f); c.arc(x, y + f, rr, 0, Math.PI); c.closePath();
+  }
 }
 
 function drawLauncher(c) {
@@ -150,25 +309,14 @@ function drawLauncher(c) {
   c.fillRect(-9, -h + 18, 18, h);
   c.fillStyle = "#4a3a6a";
   c.fillRect(-11, -h + 16, 22, 5);
-  if (G.queue.length) {
-    const rgb = COLORS[G.queue[0]].rgb;
+  if (G.queue.length && aimColor() !== undefined && !G.fired) {
+    const rgb = COLORS[aimColor()].rgb;
     c.globalCompositeOperation = "lighter";
     const g = c.createRadialGradient(0, -h + 14, 0, 0, -h + 14, 18 + pull * 10);
     g.addColorStop(0, rgba(rgb, 0.9)); g.addColorStop(1, rgba(rgb, 0));
     c.fillStyle = g;
     c.beginPath(); c.arc(0, -h + 14, 18 + pull * 10, 0, Math.PI * 2); c.fill();
   }
-  c.restore();
-  // 次に撃つ玉
-  c.save();
-  c.font = `500 11px ${FONT_HUD}`;
-  c.fillStyle = "rgba(230,220,255,.7)";
-  c.textAlign = "left";
-  c.fillText("つぎ", x + 34, y + 22);
-  G.queue.slice(1, 3).forEach((ci, i) => {
-    c.fillStyle = rgba(COLORS[ci].rgb, 0.9);
-    c.beginPath(); c.arc(x + 70 + i * 18, y + 18, 6, 0, Math.PI * 2); c.fill();
-  });
   c.restore();
 }
 
@@ -195,12 +343,61 @@ function drawHud(c) {
   c.font = `500 12px ${FONT_HUD}`;
   c.fillStyle = "rgba(230,220,255,.8)";
   c.fillText(G.reached ? `目標達成　満開まで あと${G.orbs.length}` : `目標 ${Math.min(G.popped, G.target)} / ${G.target}`, x0, y0 + 22);
-  // のこり玉
-  c.textAlign = "right";
-  c.fillText("のこり", W - 16 - SHOTS * 16, y0 + 22);
-  for (let i = 0; i < SHOTS; i++) {
-    c.fillStyle = i < G.shots ? "#ffd76a" : "rgba(255,255,255,.15)";
-    c.beginPath(); c.arc(W - 16 - (SHOTS - 1 - i) * 16 - 6, y0 + 18, 5, 0, Math.PI * 2); c.fill();
+  // シードは出さない（シードで遊ぶ機能は、いまは隠してある：SHOW_SEED）
+  if (SHOW_SEED) {
+    c.textAlign = "left";
+    c.font = `500 10px ${FONT_HUD}`;
+    c.fillStyle = "rgba(230,220,255,.45)";
+    c.fillText(`${G.practice ? "練習　" : ""}シード ${G.seed}`, x0, y0 + 38);
+  }
+  c.restore();
+}
+
+// 集中タイム：まわりが青く沈み、時間がゆっくり流れているように見せる。のこりが減るほど、ふちが狭まる
+function drawFocus(c) {
+  if (!G.focus || G.fired) return;
+  const k = Math.max(0, Math.min(1, G.focus.t / FOCUS_TIME));
+  const inner = 180 + 120 * k;
+  const g = c.createRadialGradient(W / 2, H * 0.42, inner, W / 2, H * 0.42, 520);
+  g.addColorStop(0, "rgba(20,40,110,0)");
+  g.addColorStop(1, `rgba(20,40,110,${0.32 + (1 - k) * 0.12})`);
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+}
+
+// 集中タイムののこり秒数：夜空の奥に、薄く大きく出す（5秒を切ると赤く脈打つ）
+function drawFocusCount(c) {
+  if (!G.focus || G.fired) return;
+  const left = Math.max(0, Math.ceil(G.focus.t)), hurry = G.focus.t <= 5;
+  const frac = G.focus.t - Math.floor(G.focus.t); // 1秒ごとに、少し大きく出てから落ちつく
+  c.save();
+  c.textAlign = "center"; c.textBaseline = "middle";
+  c.font = `400 ${Math.round(230 * (1 + 0.06 * frac))}px ${FONT_BIG}`;
+  c.fillStyle = hurry ? `rgba(255,120,110,${0.12 + 0.06 * frac})` : "rgba(170,195,255,.065)";
+  c.fillText(String(left), W / 2, 330);
+  c.restore();
+}
+
+// お手本：答えの場所に印をつけてから、そこへ1発打ち上げて見せる
+function drawReplay(c) {
+  const r = G.replay, a = G.snap.answer;
+  if (!r) return;
+  c.save();
+  c.textAlign = "center";
+  c.font = `400 30px ${FONT_BIG}`;
+  c.shadowColor = "rgba(255,220,160,.8)"; c.shadowBlur = 14;
+  c.fillStyle = "#ffe9c4";
+  c.fillText("お手本", W / 2, 40);
+  c.shadowBlur = 0;
+  c.font = `500 12px ${FONT_HUD}`;
+  c.fillStyle = "rgba(230,220,255,.85)";
+  c.fillText(a.n >= G.total ? "ここから火をつければ、全部つながりました" : "ここから火をつけるのが、いちばんつながりました", W / 2, 62);
+  if (!G.fired) {
+    const p = 1 + Math.sin(r.t * 6) * 0.08;
+    c.strokeStyle = "rgba(255,236,190,.95)"; c.lineWidth = 2.5;
+    c.setLineDash([6, 5]);
+    c.beginPath(); c.arc(a.x, a.y, 22 * p, 0, Math.PI * 2); c.stroke();
+    c.setLineDash([]);
   }
   c.restore();
 }
@@ -222,8 +419,9 @@ function drawTexts(c) {
 }
 
 // 筆文字のハンコ：大きく叩きつけて、少しふるえて、すっと消える
-function drawStamps(c) {
+function drawStamps(c, back) {
   for (const st of G.stamps) {
+    if (!!st.back !== back) continue;
     const t = st.t;
     const inT = 0.14;
     const scale = t < inT ? 2.4 - 1.5 * (t / inT) : t < inT + 0.1 ? 0.9 + 0.1 * ((t - inT) / 0.1) : 1;

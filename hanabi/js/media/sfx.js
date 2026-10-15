@@ -100,6 +100,16 @@ const sfx = (() => {
     sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.05, t + 0.2); sg.gain.exponentialRampToValueAtTime(0.0001, t + T);
     s.connect(f).connect(sg).connect(master); s.start(t); s.stop(t + T + 0.05);
   }
+  // ポン（火をつけ忘れた花火玉が、地上から昇っていく音。軽く）
+  function pon() {
+    if (!ac) return;
+    const t = ac.currentTime + 0.01;
+    const p = ac.createOscillator(), pg = ac.createGain();
+    p.type = "sine"; p.frequency.setValueAtTime(260, t); p.frequency.exponentialRampToValueAtTime(90, t + 0.1);
+    pg.gain.setValueAtTime(0.22, t); pg.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    p.connect(pg).connect(master); p.start(t); p.stop(t + 0.18);
+    noiseHit(t, 0.06, 700, "lowpass", 0.18);
+  }
   function crack() {
     if (!ac) return;
     noiseHit(ac.currentTime, 0.06, 1600, "bandpass", 0.6);
@@ -169,6 +179,25 @@ const sfx = (() => {
     });
   }
   // 場内アナウンスのチャイム（ピンポンパンポーン）
+  // UFO の爆発：ゲームのような「ドガーン」。花火のドーンとは別物に聞こえるよう、
+  // 下がっていく矩形波と、段々に小さくなるザラザラした雑音（高い所は切って耳に痛くしない）
+  function explode() {
+    if (!ac) return;
+    const t = ac.currentTime + 0.01;
+    const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.5);
+    f.type = "lowpass"; f.frequency.value = 900;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + 0.65);
+    for (let i = 0; i < 6; i++) noiseHit(t + i * 0.07, 0.09, 1300 - i * 150, "lowpass", 0.32 * Math.pow(0.72, i));
+    thump(t, 90, 35, 0.5, 0.45, lowBus());
+  }
+  // 狙いを決めた：コッ（拍子木のような短い音。n 発目ほど少し高く。0 は取り消し）
+  function plan(n) {
+    if (!ac) return;
+    const t = ac.currentTime;
+    tone(n ? 520 + n * 90 : 380, t, 0.07, 0.1, "triangle"); noiseHit(t, 0.03, 1400, "bandpass", 0.15);
+  }
   function chime() {
     if (!ac) return;
     const t = ac.currentTime;
@@ -176,5 +205,5 @@ const sfx = (() => {
   }
   // 拍の格子の時計：音が使えるときは音の時計に合わせる（お囃子とずれない）
   const now = () => ac ? ac.currentTime : performance.now() / 1000;
-  return { unlock, boom, launch, crack, fuse, hush, finale, sky, clear, chime, now };
+  return { unlock, boom, launch, pon, crack, fuse, hush, finale, sky, clear, chime, plan, explode, now };
 })();

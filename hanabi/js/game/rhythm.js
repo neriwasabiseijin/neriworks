@@ -27,10 +27,11 @@ const BEAT_RULE = [
 
 // 拍の格子で、いまから min 秒以上あとの、unit 個おきの16分の拍までの秒数。
 // take なら同じ拍に2つ開かないよう、その拍を取っておく
+// unit は、お囃子の小節にそろえて数える（ポーズでずらした分 BEAT.paused を足す）
 function toBeat(min, unit, take) {
-  const now = beatNow();
+  const now = beatNow(), off = Math.round(BEAT.paused / BEAT_STEP);
   let k = Math.ceil((now + min) / BEAT_STEP - 1e-6);
-  while (k % unit || (take && BEAT.slots.has(k))) k++;
+  while ((k + off) % unit || (take && BEAT.slots.has(k))) k++;
   if (take) {
     BEAT.slots.add(k);
     // 過ぎた拍は忘れる
@@ -44,14 +45,23 @@ function fuseOnBeat(depth) {
   const rule = BEAT_RULE[Math.min(depth, 3)];
   return toBeat(rule.min, rule.unit, true);
 }
+// その時刻が8分の拍の上か
+const onEighth = at => (Math.round((at + BEAT.paused) / BEAT_STEP)) % 2 === 0;
 
-// 打ち上げ：指をはなしてから、次の16分の拍で「ポン」と上がる
-const launchDelay = () => toBeat(0, 1, false);
+// 打ち上げ：「ポン」は8分の拍で上がる
+const launchDelay = () => toBeat(0, 2, false);
 // プレイヤーの玉：てっぺんの「間」のあと、8分の拍の上で開く
 const apexPause = () => toBeat(APEX_PAUSE, 2, true);
 
-// 特大花火：次の4分音符の頭までの秒数（最低 min 秒は待つ）
-const waitToBeat = min => toBeat(min, 4, false);
+// 特大花火：次の「表拍」（4拍子の1拍目か3拍目）の頭までの秒数（最低 min 秒は待つ）。
+// 2拍目・4拍目で終わると、しめくくりが落ち着かないので、強い拍に落とす。
+// お囃子の小節は音の時計で数えているので、ポーズでずらした分（BEAT.paused）を足して小節の中の位置を出す
+function waitToBeat(min) {
+  const now = beatNow(), off = Math.round(BEAT.paused / BEAT_STEP);
+  let k = Math.ceil((now + min) / BEAT_STEP - 1e-6);
+  while ((k + off) % 8) k++;
+  return k * BEAT_STEP - now;
+}
 
 // 拍にのせた待ち時間は、拍の時計で数える（画面のコマ落ちで拍からずれないように）
 // beatAt：いまから left 秒後の拍の時刻。beatLeft：その時刻まであと何秒か

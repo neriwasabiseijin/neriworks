@@ -26,6 +26,29 @@ function sparks(x, y, rgb, R, depth, grow, count = 0, life = 0) {
   if (sparkList.length > SPARK_MAX) sparkList.splice(0, sparkList.length - SPARK_MAX);
 }
 
+// 形のある花火の星。ススキ：向きへのびる三角形の金色の穂。型物：☆のふちに並ぶ光。しだれ：重く垂れる金の尾。
+// どれも物理で飛ばす（空気の抵抗で減速し、重さで垂れる）。見た目の花火らしさを優先し、
+// 届く範囲（config.js の reachAt）のはしより少し先まで流れることがある
+function shapeSparks(x, y, rgb, shape, rot, R, grow) {
+  const v = dist => dist * SPARK_DRAG / (1 - Math.exp(-SPARK_DRAG * grow));
+  const add = (a, dist, o) => sparkList.push({ x, y, vx: Math.cos(a) * v(dist), vy: Math.sin(a) * v(dist), hist: [], life: rnd(1.8, 2.6), age: 0,
+    rgb, drag: SPARK_DRAG, grow, glitter: false, size: 2, ...o });
+  const gold = [255, 214, 140];
+  if (shape.tri) {
+    // 向きのまわりに、ばらばらの長さの穂
+    for (let i = 0; i < 34; i++) add(rot + rnd(-shape.hw, shape.hw) * 0.9, R * shape.len * rnd(0.35, 1.02), { rgb: rng() < 0.6 ? gold : rgb, glitter: true });
+  } else if (shape.inner) {
+    // ☆のふちに沿って並べ、ふちごと広がっていくように見せる
+    for (let i = 0; i < 70; i++) {
+      const a = (i / 70) * Math.PI * 2;
+      add(rot + a, starEdge(R * shape.len, R * shape.inner, a), { rgb: i % 7 ? rgb : [255, 250, 230], size: 2, life: rnd(1.6, 2.1) });
+    }
+  } else if (shape.drop) {
+    for (let i = 0; i < 40; i++) add(rnd(0, Math.PI * 2), R * rnd(0.7, 1), { rgb: rng() < 0.7 ? gold : rgb, life: rnd(2.8, 3.6), glitter: true, heavy: true });
+  }
+  if (sparkList.length > SPARK_MAX) sparkList.splice(0, sparkList.length - SPARK_MAX);
+}
+
 // 昇っている花火玉からこぼれる火の粉
 function ember(x, y) {
   sparkList.push({ x: x + rnd(-1.5, 1.5), y, vx: rnd(-8, 8), vy: rnd(10, 30), hist: [], life: rnd(0.4, 0.8), age: 0,
@@ -47,10 +70,10 @@ function updateSparks(dt) {
     s.age += dt;
     if (s.age >= s.life) continue;
     s.hist.push(s.x, s.y);
-    if (s.hist.length > TRAIL * 2) s.hist.splice(0, 2);
+    if (s.hist.length > (s.heavy ? TRAIL * 3 : TRAIL) * 2) s.hist.splice(0, 2);
     const k = Math.exp(-s.drag * dt);
     // 広がりきるまでは重力を弱く、そのあとゆっくりしだれる
-    const g = s.age < s.grow ? 12 : 46;
+    const g = s.heavy ? (s.age < s.grow ? SHIDARE_G1 : SHIDARE_G2) : s.age < s.grow ? 12 : 46; // しだれは重く垂れる
     s.vx *= k; s.vy = s.vy * k + g * dt;
     s.x += s.vx * dt; s.y += s.vy * dt;
     sparkList[j++] = s;
