@@ -174,4 +174,20 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup);
   else setup();
+
+  // ---- 裏に回ったら（アプリ切り替え・画面オフ・タブ切り替え）音を止めて、音量画面を開いてポーズにする
+  // Android の Chrome などは裏でも AudioContext が鳴り続けるため。戻ってきたら、ポーズ画面を開いたときは
+  // 次のタップで音を戻し（ゲームは「ゲームにもどる」まで止めたまま）、開かなかったときはすぐ戻す。
+  function hide() {
+    if (!ctx) return;
+    if (ctx.state === "running") ctx.suspend();
+    const busy = document.documentElement.classList.contains("mg-booting") || document.querySelector(".mg-off"); // 読み込み中・電源を切る途中
+    if (modal && !busy) open();
+  }
+  function show() {
+    if (ctx && !MG.paused && ctx.state !== "running") ctx.resume().catch(() => {});
+  }
+  document.addEventListener("visibilitychange", () => (document.hidden ? hide() : show()));
+  addEventListener("pagehide", hide);
+  addEventListener("pageshow", e => { if (e.persisted) show(); });
 })();
