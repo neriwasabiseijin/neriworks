@@ -1,6 +1,6 @@
 "use strict";
 // ひと晩のしめくくり。
-// 第九景「大詰め」やアンコールを満開で終えると、観客のアンコールで次の演目へ（最大 ENCORES 回）。
+// 第九景「大詰め」をクリアするか、アンコールを満開で終えると、観客のアンコールで次の演目へ（最大 ENCORES 回）。
 // そうでなければ（アンコールで目標に届かなくても）、スターマインの大団円で気持ちよくお開きにする。
 
 const ENCORES = 99;
@@ -10,7 +10,7 @@ const ENDING_LEN = 4.8;
 const encoresOf = stage => Math.max(0, stage - PROGRAM.length);
 
 // 演目のクリア後、次にアンコールへ進めるか
-const earnsEncore = () => G.stage >= PROGRAM.length && G.lastPerfect && encoresOf(G.stage) < ENCORES;
+const earnsEncore = () => G.stage >= PROGRAM.length && (G.stage === PROGRAM.length || G.lastPerfect) && encoresOf(G.stage) < ENCORES;
 // 大詰め以降で、アンコールに進めなければ大団円
 const nightEnds = () => G.stage >= PROGRAM.length && !earnsEncore();
 
