@@ -105,6 +105,7 @@ function endOfShot() {
       G.lastPerfect = false;
       $("clearAnswer").hidden = !G.snap || !G.snap.answer;
       cheerStage(n <= 2 ? "weak" : "clear", n);
+      if (earnsEncore()) cheerEncore();
     } else {
       // 観客のため息を見せてからリザルトへ
       G.mode = "over";
