@@ -25,7 +25,7 @@ function hurt() {
   if (p.inv > 0 || scene !== "play" || DEV.inv || G.viewer) return;
   if (G.iceLeft > 0) { // 氷の衣：防いだうえ、まわりの弾を凍らせて消す
     G.iceLeft--; p.inv = 1; iceShatter(p.x, p.y, starR() + G.iceLeft * 4); sfx.ice(); shake(9); hatKick(300, (Math.random() < .5 ? -1 : 1) * 6);
-    const R = 40 + lv("ice") * 10; for (const b of G.bullets) if (dist2(b, p) < R * R) { b.dead = true; addFx(b.x, b.y, "#cfeaff", 1); }
+    const R = iceR(lv("ice")); for (const b of G.bullets) if (dist2(b, p) < R * R) { b.dead = true; addFx(b.x, b.y, "#cfeaff", 1); }
     G.fx.push({ x: p.x, y: p.y, kind: "ring", r0: starR(), r1: R, life: .35, max: .35, color: "#cfeaff" });
     return;
   }

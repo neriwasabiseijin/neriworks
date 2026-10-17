@@ -4,8 +4,21 @@
 // 効果は「灰色（今）→色つき（取ったあと）」で書く。大彗星の技も同じ書き方
 
 function effText([pre, f, post], from, to, cls) {
-  const v = from > 0 ? `<s class="old">${f(from)}</s>→<em class="${cls}">${f(to)}</em>` : `<em class="${cls}">${f(to)}</em>`;
+  const v = from > 0 ? diffVal(f(from), f(to), cls) : `<em class="${cls}">${f(to)}</em>`;
   return pre + v + post;
+}
+// 値が「・」「。」で区切られた複数の数のときは、変わった数だけ「古い→新しい」にする（同じ言葉をくり返さない）
+function diffVal(a, b, cls) {
+  const sa = a.split(/([・。])/), sb = b.split(/([・。])/);
+  if (sa.length !== sb.length) return `<s class="old">${a}</s>→<em class="${cls}">${b}</em>`;
+  return sa.map((x, i) => {
+    const y = sb[i];
+    if (i % 2) return y;
+    if (x === y) return `<em class="${cls}">${y}</em>`;
+    let n = 0; while (n < x.length && n < y.length && x[n] === y[n]) n++;
+    while (n > 0 && /[0-9.+\-−×]/.test(x[n - 1])) n--;   // 数の途中では切らない
+    return y.slice(0, n) + `<s class="old">${x.slice(n)}</s>→<em class="${cls}">${y.slice(n)}</em>`;
+  }).join("");
 }
 let pickSkip = null;   // カードを選んだあとの演出を飛ばす（ダブルタップ）
 onDoubleTap($("cardpick"), () => { if (pickSkip) pickSkip(); });

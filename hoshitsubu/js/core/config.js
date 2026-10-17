@@ -1,7 +1,7 @@
 "use strict";
 // 定数：画面の大きさ、星の段階、強化カード、敵の基本値、調整値
 
-const VERSION = "ver1.0.0";
+const VERSION = "ver1.0.1";
 // 見出し・数字（キャンバスに描く文字）のフォント。CSS の --display / --dw と合わせる
 const HEAD_FONT = "'Yusei Magic', 'Zen Maru Gothic', sans-serif", HEAD_W = 400;
 // ロゴと星の名前：かなはだるまドロップ、漢字は入っていないのでゆうせいマジックで出す
@@ -34,15 +34,15 @@ const CAT_KEYS = Object.keys(CATS);
 const CARDS = {
   star:   { cat: "power", name: "一番星",   me: ["放った衛星の威力 ", l => pct(grow(l, 1, 1.6)), ""],                       word: ["シリ", "リウス", "シリウス", "シリ"] },
   cap:    { cat: "power", name: "衛星の器", me: ["衛星の上限 ", l => "+" + Math.round(grow(l, 30, 45)), ""],            word: ["パン", "ンドラ", "パンドラ", "ンド"] },
-  split:  { cat: "power", name: "分裂",     me: ["放った衛星が敵に当たると", l => splitN(l) + "つ", "に割れる"],              word: ["ポップ", "コーン", "ポップコーン", "プコ"] },
+  split:  { cat: "power", name: "分裂",     me: ["放った衛星が敵に当たると", l => splitN(l) + "つに割れる。割れた粒の威力 " + pct(splitDmg(l) - 1), ""],              word: ["ポップ", "コーン", "ポップコーン", "プコ"] },
   nova:   { cat: "power", name: "超新星",   me: ["しばらく押し続けてから放つと衝撃波", l => "Lv" + l, "が出る。まわりの敵と弾を吹きとばす"], word: ["スーパ", "ノヴァ", "スーパーノヴァ", "パノ"] },
   grav:   { cat: "tech",  name: "引力",     me: ["引力圏の広さ ", l => pct(grow(l, .6, .9)), ""],       word: ["グラビ", "ビティ", "グラビティ", "ラビ"] },
   heal:   { cat: "tech",  name: "星の治癒", me: ["かけらを", l => healNeed(l) + "個", "集めるごとに、星のいのちが1つ戻る"], word: ["ヒー", "リング", "ヒーリング", "リン"] },
-  ice:    { cat: "tech",  name: "氷の衣",   me: ["1波に", l => Math.ceil(l / 3) + "回", "、当たっても氷が守ってくれる"],       word: ["シャベ", "ベット", "シャーベット", "シャ"] },
+  ice:    { cat: "tech",  name: "氷の衣",   me: ["当たっても氷が守ってくれる（1波に", l => Math.ceil(l / 3) + "回）。割れた氷が、まわりの弾を消す（広さ ×" + (iceR(l) / 50).toFixed(1), "）"],       word: ["シャベ", "ベット", "シャーベット", "シャ"] },
   bless:  { cat: "tech",  name: "星の恵み", me: ["かけらでもらえる経験値 ", l => pct(grow(l, .75, 1.2)), ""], word: ["ハーベ", "ベスト", "ハーベスト", "ベス"] },
   speed:  { cat: "speed", name: "加速",     me: ["放った衛星の速さ ", l => pct(grow(l, .75, 1.1)) + (pierceN(l) ? "、敵を" + pierceN(l) + "体つらぬく" : ""), ""],                     word: ["ロケ", "ケット", "ロケット", "ロケ"] },
   homing: { cat: "speed", name: "追尾",     me: ["放った衛星が敵を追いかける力 ", l => "×" + (1 + grow(l, 1.5, 2.4)).toFixed(1), ""], word: ["ブーメ", "メラン", "ブーメラン", "メラ"] },
-  twin:   { cat: "speed", name: "連星",     me: ["相棒星が", l => Math.ceil(l / 3) + "つ", "回って弾から守ってくれる"],        word: ["サテ", "ライト", "サテライト", "テラ"] },
+  twin:   { cat: "speed", name: "連星",     me: ["相棒星が回って弾から守ってくれる（", l => Math.ceil(l / 3) + "つ・守る広さ ×" + (twinR(l) / 12).toFixed(1), "）"],        word: ["サテ", "ライト", "サテライト", "テラ"] },
   light:  { cat: "speed", name: "身軽",     me: ["衛星を集めたときの重さ ", l => "−" + Math.round(grow(l, .5, .8) * 100) + "%", ""], word: ["フェザ", "ザー", "フェザー", "フェ"] },
 };
 const CARD_KEYS = Object.keys(CARDS);
@@ -50,17 +50,17 @@ const CARD_KEYS = Object.keys(CARDS);
 // どれも攻撃や動きが変わるもので、体力・殻・回復は増やさない（それは何体目かで決める）。text は [文の前, 段階→値, 文の後]、icon は絵を借りるカード
 const BOSS_TECHS = {
   barrage: { name: "弾幕",     icon: "cap",    text: ["大彗星の撃つ弾の数 ", l => pct(grow(l, .75, 1.1)), ""] },
-  splitb:  { name: "分裂弾",   icon: "split",  text: ["大彗星の弾が途中で", l => splitN(l) + "つ", "に分裂する"] },
+  splitb:  { name: "分裂弾",   icon: "split",  text: ["大彗星の弾が途中で", l => splitN(l) + "つに分裂する。割れた弾の速さ " + pct(splitbSp(l) - 1), ""] },
   burst:   { name: "殻はじけ", icon: "nova",   text: ["大彗星の殻が割れると、弾を", l => 4 + l * 2 + "発", "まき散らす"] },
   fastb:   { name: "速い弾",   icon: "speed",  text: ["大彗星の弾の速さ ", l => pct(grow(l, .5, .8)), ""] },
   chase:   { name: "追う弾",   icon: "homing", text: ["大彗星の弾があなたを", l => l <= 2 ? "ゆるく" : l <= 6 ? "しっかり" : "しつこく", "追う"] },
-  kid:     { name: "子彗星",   icon: "twin",   text: ["大彗星に子彗星が", l => Math.ceil(l / 3) + "つ", "付いて弾を撃つ"] },
+  kid:     { name: "子彗星",   icon: "twin",   text: ["大彗星に子彗星が付いて弾を撃つ（", l => Math.ceil(l / 3) + "つ・撃つ間隔 " + kidGap(l).toFixed(1) + "秒", "）"] },
   quick:   { name: "早足",     icon: "light",  text: ["大彗星の動きの速さ ", l => pct(grow(l, 1, 1.6)), "、ときどき素早く動く"] },
   big:     { name: "大玉",     icon: "star",   text: ["大彗星の弾の大きさ ", l => pct(grow(l, .75, 1.2)), ""] },
   pull:    { name: "引き寄せ", icon: "grav",   text: ["大彗星があなたを", l => l <= 2 ? "少しずつ" : l <= 6 ? "じわじわ" : "ぐいぐい", "引き寄せる"] },
   ring:    { name: "殻の輪",   icon: "heal",   text: ["大彗星の殻が戻るとき、弾の輪を撃つ（", l => ringN(l) + "発", "）"] },
   frost:   { name: "凍り弾",   icon: "ice",    text: ["大彗星の弾に、あとで砕けて広がる弾が", l => l <= 2 ? "ときどき" : l <= 6 ? "よく" : "たくさん", "まざる"] },
-  minion:  { name: "子分よび", icon: "bless",  text: ["大彗星が子分を", l => Math.ceil(l / 3) + "体", "連れてくる"] },
+  minion:  { name: "子分よび", icon: "bless",  text: ["大彗星が子分を連れてくる（", l => Math.ceil(l / 3) + "体・倒されると " + minionGap(l).toFixed(1) + "秒で次", "）"] },
 };
 const TECH_KEYS = Object.keys(BOSS_TECHS);
 const ringN = l => 8 + l * 2;                                  // 殻の輪：Lv1 10発〜Lv9 26発
@@ -70,6 +70,13 @@ const NAME_STEP = 3;   // 星の名前と帽子が変わる節目（Lv3・6・9�
 const HAT_NAMES = { star: "王冠", cap: "パンダフード", split: "パーティー帽", nova: "つのかぶと", grav: "まじょの帽子", heal: "うさみみフード",
   ice: "ニット帽", bless: "むぎわら帽子", speed: "パイロット帽", homing: "ハンチング", twin: "ヘルメット", light: "ねこみみフード" };
 const splitN = l => Math.ceil(l / 3) + 1;          // 分裂：Lv1〜3で2つ、4〜6で3つ、7〜9で4つ
+// 数が Lv1・4・7 でしか増えないカードと技は、ほかの値をレベルごとに伸ばして、どのレベルでも強くなるようにする
+const splitDmg = l => 1 + grow(l, .25, .5);        // 分裂：割れた粒の威力（Lv1 +5%〜Lv9 +50%）
+const iceR = l => 50 + grow(l, 40, 80);            // 氷の衣：まわりの弾を凍らせる半径（Lv1 58〜Lv9 130）
+const twinR = l => 12 + grow(l, 6, 12);            // 連星：相棒星が弾を防ぐ半径（Lv1 13〜Lv9 24）
+const splitbSp = l => 1 + grow(l, .15, .3);        // 分裂弾：割れた弾の速さ
+const kidGap = l => 1.8 - grow(l, .4, .7);         // 子彗星：撃つ間隔（秒）
+const minionGap = l => 3.5 - grow(l, 1, 1.8);      // 子分よび：倒されてから次を呼ぶまで（秒）
 const pierceN = l => Math.floor(l / 3);   // 加速：Lv3・6・9で、放った衛星が敵を1体ずつ多くつらぬく
 const healNeed = l => Math.round(60 - grow(l, 25, 35));   // 星の治癒：星のいのちが1つ戻るまでに集めるかけらの数（Lv1 55個〜Lv9 25個）
 const NOVA_T = 2.5;                                 // 超新星：衝撃波がたまるまで押し続ける秒数
