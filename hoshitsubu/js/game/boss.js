@@ -48,7 +48,7 @@ function updateBoss(b, dt) {
   // 子分よび：子分を連れてくる。倒されたら、少しして次を呼ぶ
   if (bossLv("minion") && scene === "play") {
     const N = Math.ceil(bossLv("minion") / 3), have = G.enemies.filter(e => e.type === "minion" && !e.dead).length;
-    if (have < N) { b.minionT -= dt; if (b.minionT <= 0) { spawnEnemy("minion", { x: b.x, y: b.y + 20, goal: innerPoint(90) }); b.minionT = 3; } }
+    if (have < N) { b.minionT -= dt; if (b.minionT <= 0) { spawnEnemy("minion", { x: b.x, y: b.y + 20, goal: innerPoint(90) }); b.minionT = minionGap(bossLv("minion")); } }
   }
   b.hd = Math.PI / 2 - b.dir * .3; // 尾は上へなびく（下へ進んでいる向きで描く）
   if (b.broken > 0) {
@@ -72,7 +72,7 @@ function updateBoss(b, dt) {
     b.sp -= dt; if (b.sp <= 0) { const k = Math.round(3 * many); for (let i = 0; i < k; i++) bossFire(b.x + rand(-40, 40), b.y - 20, Math.PI / 2 + rand(-.9, .9), rand(50, 110), Math.random() < .25 ? "heavy" : randKind()); b.sp = .25; }
     if (b.phaseT > 3) { b.phase = 0; b.phaseT = 0; }
   }
-  if (bossLv("kid")) { b.twinA += dt * 1.5; b.twinFire -= dt; if (b.twinFire <= 0) { for (let i = 0; i < bossTwinN(); i++) { const p = bossTwin(b, i); bossFire(p.x, p.y, Math.atan2(G.p.y - p.y, G.p.x - p.x), 110, "normal"); } b.twinFire = 1.6; } }
+  if (bossLv("kid")) { b.twinA += dt * 1.5; b.twinFire -= dt; if (b.twinFire <= 0) { for (let i = 0; i < bossTwinN(); i++) { const p = bossTwin(b, i); bossFire(p.x, p.y, Math.atan2(G.p.y - p.y, G.p.x - p.x), 110, "normal"); } b.twinFire = kidGap(bossLv("kid")); } }
 }
 function damageBoss(b, dmg, batch) {
   if (b.y < b.ty) return;

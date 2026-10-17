@@ -62,13 +62,13 @@ function update(dt) {
     }
     if (G.boss && bossLv("splitb") && !b.split && b.t > .8) { // 大彗星の分裂弾：弾が途中で割れる
       b.split = 1; const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx), n = splitN(bossLv("splitb"));
-      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * .35; nb.push({ ...b, vx: Math.cos(a + o) * sp, vy: Math.sin(a + o) * sp }); }
+      for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * .35; nb.push({ ...b, vx: Math.cos(a + o) * sp * splitbSp(bossLv("splitb")), vy: Math.sin(a + o) * sp * splitbSp(bossLv("splitb")) }); }
       b.dead = true; return;
     }
     b.x += b.vx * dt; b.y += b.vy * dt;
     const d2 = dist2(b, p);
     if (held && b.kind !== "thorn" && d2 < gR2 && capture(b.kind, b.color, b.x, b.y)) { b.dead = true; return; }
-    for (let i = 0; i < twinN(); i++) { const tp = twinPos(i); if (dist2(b, tp) < (12 + lv("twin")) ** 2) {
+    for (let i = 0; i < twinN(); i++) { const tp = twinPos(i); if (dist2(b, tp) < twinR(lv("twin")) ** 2) {
       // 相棒星：とげ弾は消し、ほかの弾は衛星にする（衛星がいっぱいなら消す）
       if (b.kind === "thorn") { b.dead = true; addFx(b.x, b.y, b.color, 3); return; }
       if (capture(b.kind, b.color, b.x, b.y)) { b.dead = true; return; }
@@ -140,7 +140,7 @@ function update(dt) {
       s.dead = true;
       if (s.split > 0) { // 段階+1個に割れる（割れた粒はもう割れない）
         const a = Math.atan2(s.vy, s.vx), sp = Math.hypot(s.vx, s.vy), n = splitN(s.split);
-        for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * .5; add.push({ ...s, dead: false, x: s.x + Math.cos(a) * (e.r + 8), y: s.y + Math.sin(a) * (e.r + 8), vx: Math.cos(a + o) * sp, vy: Math.sin(a + o) * sp, split: 0, pierce: 0, bounce: 0, hit: null, r: s.r * .8, life: .8, tg: null, trail: [] }); }
+        for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * .5; add.push({ ...s, dead: false, x: s.x + Math.cos(a) * (e.r + 8), y: s.y + Math.sin(a) * (e.r + 8), vx: Math.cos(a + o) * sp, vy: Math.sin(a + o) * sp, dmg: s.dmg * splitDmg(s.split), split: 0, pierce: 0, bounce: 0, hit: null, r: s.r * .8, life: .8, tg: null, trail: [] }); }
       }
       break;
     }

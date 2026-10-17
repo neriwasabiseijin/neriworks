@@ -107,7 +107,7 @@ function drawPlayer() {
     g.restore();
   }
   drawOrbs();
-  for (let i = 0; i < twinN(); i++) { const tp = twinPos(i); g.fillStyle = "rgba(255,241,194,.35)"; g.beginPath(); g.arc(tp.x, tp.y, 10, 0, TAU); g.fill(); g.fillStyle = "#fff1c2"; g.beginPath(); g.arc(tp.x, tp.y, 6, 0, TAU); g.fill(); }
+  for (let i = 0; i < twinN(); i++) { const tp = twinPos(i); g.fillStyle = "rgba(255,241,194,.35)"; g.beginPath(); g.arc(tp.x, tp.y, twinR(lv("twin")) - 3, 0, TAU); g.fill(); g.fillStyle = "#fff1c2"; g.beginPath(); g.arc(tp.x, tp.y, 6, 0, TAU); g.fill(); }
   if (p.inv > 0 && scene === "play" && Math.floor(p.inv * 12) % 2) return;
   const sh = full && held ? rand(-1.2, 1.2) : 0, x = p.x + sh, y = p.y + sh;
   const glow = g.createRadialGradient(x, y, 2, x, y, r * 2.6); glow.addColorStop(0, full && held ? "rgba(255,190,150,.6)" : "rgba(255,231,163,.5)"); glow.addColorStop(1, "rgba(255,231,163,0)");
@@ -129,7 +129,7 @@ function drawLook(c, x, y, k, t, layer) {
     for (let i = 0; i < n; i++) {
       const a = (t == null ? 0 : t * 2.4 * (1 + lv("twin") * .08) - Math.PI / 4) + i * TAU / n, // t なし：横にならべて止める
          tx = x + Math.cos(a) * 46 * k, ty = y + Math.sin(a) * 46 * k;
-      c.fillStyle = "rgba(255,241,194,.35)"; c.beginPath(); c.arc(tx, ty, 10 * k, 0, TAU); c.fill();
+      c.fillStyle = "rgba(255,241,194,.35)"; c.beginPath(); c.arc(tx, ty, (twinR(lv("twin")) - 3) * k, 0, TAU); c.fill();
       c.fillStyle = "#fff1c2"; c.beginPath(); c.arc(tx, ty, 6 * k, 0, TAU); c.fill();
     }
     lookOrbsStill(c, x, y, starR() * k);
