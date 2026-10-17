@@ -1,0 +1,300 @@
+/* 縦長 360x640 のキャンバスを、共通バーの下に収まるよう拡大縮小する。HTMLの重ね画面はタイトル・カード・リザルト・チュートリアル。
+   夜空の一色（ゆめかわポップの宇宙）で固定。 */
+:root {
+  --bg: #0e0b22;
+  --panel: rgba(31, 25, 66, .92);
+  --line: #4a3f8a;
+  --fg: #f4f0ff;
+  --muted: #b9aee0;
+  --star: #ffe7a3;
+  --pink: #ff9ecf;
+  --mint: #8ff0d2;
+  --sky: #9cc8ff;
+  --bad: #ff6b8a;
+  --dark: #1a1530;
+  --logo: "Darumadrop One", "Yusei Magic", "Zen Maru Gothic", system-ui, sans-serif;  /* ロゴと星の名前：かなはだるまドロップ、漢字はゆうせいマジック */
+  --display: "Yusei Magic", "Zen Maru Gothic", system-ui, sans-serif;
+  --dw: 400;          /* 見出しの太さ（Yusei Magic は1つの太さだけ） */
+  --body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Meiryo", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overscroll-behavior: none; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-weight: 500;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app {
+  position: fixed;
+  inset: var(--mg-bar-h, 0px) 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+#stage { position: relative; overflow: hidden; touch-action: none; }
+#cv { display: block; width: 100%; height: 100%; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  background: rgba(14, 11, 34, .55);
+}
+#result, #fail { background: rgba(14, 11, 34, .88); }
+/* 中身が多くても縮んで重ならないように（入りきらないときは中でスクロール） */
+.overlay > * { flex-shrink: 0; }
+#title > .dev { flex-shrink: 1; min-height: 40px; }   /* テスト欄：入りきらない分は欄の中で縦にスクロール */
+#result { justify-content: safe center; overflow-y: auto; overscroll-behavior: contain; gap: 8px; padding: 16px 20px; }
+#result .primary, #result .secondary { padding: 10px 30px; }
+.eyebrow { margin: 0; font-size: 12px; letter-spacing: .2em; color: var(--muted); }
+.logo {
+  margin: 0;
+  font: 400 44px/1.15 var(--logo);
+  color: var(--star);
+  text-shadow: 0 0 18px rgba(255, 231, 163, .5), 0 3px 0 #b77fd8;
+}
+.logo span { display: block; font-size: 42px; margin-top: -2px; color: var(--pink); text-shadow: 0 0 16px rgba(255, 158, 207, .55), 0 3px 0 #7a5fd0; }
+#titleHero { width: 120px; height: 120px; }
+.lead { margin: 0; font-size: 14px; line-height: 1.8; }
+.best { margin: 0; min-height: 1.2em; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { margin: 0; font-size: 12px; color: var(--muted); }
+
+button { font: inherit; cursor: pointer; }
+.primary, .secondary {
+  min-width: 200px;
+  padding: 12px 30px;
+  border-radius: 99px;
+  font-family: var(--display); font-weight: var(--dw);
+  font-size: 18px;
+}
+.primary { border: none; background: var(--star); color: var(--dark); box-shadow: 0 4px 0 #c99a4a; }
+.primary:active { transform: translateY(2px); box-shadow: 0 2px 0 #c99a4a; }
+.secondary { border: 2px solid var(--line); background: var(--panel); color: var(--fg); }
+button:focus-visible { outline: 3px solid var(--fg); outline-offset: 3px; }
+
+/* 強化カード */
+.ctitle { margin: 0; font: var(--dw) 18px var(--display); }
+.cards { display: flex; gap: 10px; width: 100%; justify-content: center; perspective: 600px; }
+.card {
+  flex: 1 1 0;
+  max-width: 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 10px;
+  border: 2px solid var(--mint);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--fg);
+  text-align: left;
+  transition: transform .45s ease, opacity .45s ease;
+  animation: paperOpen .58s steps(1, end) backwards;   /* 文字の知らせと同じく、紙が開くように配られる */
+}
+.card:nth-child(2) { animation-delay: .12s; }
+@keyframes deal { from { transform: translateY(30px) scale(.9); opacity: 0; } }
+.card { position: relative; overflow: hidden; }
+.card > * { position: relative; }
+.card .head { display: flex; align-items: center; gap: 6px; }
+.card .tag { align-self: flex-start; padding: 0 8px; border-radius: 99px; font-size: 10px; color: var(--dark); background: var(--cc); }
+.card.cat-power { --cc: #ff9ecf; } .card.cat-tech { --cc: #8ff0d2; } .card.cat-speed { --cc: #9cc8ff; }
+.card[class*="cat-"] { border-color: var(--cc); }
+.card[class*="cat-"] b { color: var(--cc); }
+.card.chosen { border-color: var(--star); }
+/* 3系統の合計Lv（型のボーナスまでのバー） */
+.catbar { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.cb { --cc: #b9aee0; position: relative; padding: 2px 9px 5px; border: 1px solid var(--line); border-radius: 99px; font-size: 11px; color: var(--muted); overflow: hidden; }
+.cb.cat-power { --cc: #ff9ecf; } .cb.cat-tech { --cc: #8ff0d2; } .cb.cat-speed { --cc: #9cc8ff; }
+.cb b { color: var(--cc); font-weight: 900; }
+.cb i { position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--k) * 100%); background: var(--cc); }
+.cb.on { border-color: var(--cc); box-shadow: 0 0 8px var(--cc); }
+.cb.fresh { animation: awaken .9s ease 2; }
+@keyframes awaken { 50% { transform: scale(1.25); box-shadow: 0 0 22px var(--cc); background: rgba(255, 255, 255, .12); } }
+.card .ico { width: 26px; height: 26px; flex: none; }
+/* 背景に、同じ絵を白で大きく薄く */
+.card > .bgico { position: absolute; right: -18%; bottom: -8%; width: 95%; height: auto; opacity: .12; pointer-events: none; }
+.card b { font: var(--dw) 17px var(--display); color: var(--mint); }
+.card .lv { font-size: 11px; color: var(--muted); }
+.card .me { font-size: 13px; line-height: 1.5; }
+.card .boss { padding-top: 6px; border-top: 1px dashed var(--line); font-size: 12px; line-height: 1.5; color: var(--pink); }
+.card s.old { color: #8a82a8; text-decoration: none; }
+.card em { font-style: normal; font-weight: 900; }
+.card em.up { color: var(--sky); }
+.card em.bad { color: var(--bad); }
+/* 選ばなかったカードは裏返ってから、上の大彗星（シルエット）へ吸い込まれる */
+.card.chosen { transform: scale(1.06); border-color: var(--star); box-shadow: 0 0 18px rgba(255, 231, 163, .5); }
+.card.chosen .boss, .card.left .me, .card.left .lv { color: var(--muted); filter: grayscale(1); opacity: .45; transition: opacity .25s, filter .25s; }
+.card.chosen .boss em, .card.left .me em { color: inherit; }
+.card.flip { transform: rotateY(180deg); border-color: #6a3fa0; background: #2a1440; }
+.card.flip > * { visibility: hidden; }
+/* 裏面：大彗星に渡る力を読めるように（カードが180°回るので、中身を逆に回して正しい向きで見せる） */
+.card > .back { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px; transform: rotateY(180deg); text-align: center; }
+.card.flip > .back { display: flex; visibility: visible; }
+.card .back .ico { width: 40px; height: 40px; }
+.card .back b { color: var(--pink); font-size: 18px; }
+.card .back .lbl { font-size: 12px; color: var(--pink); }
+.card .back .eff { font-size: 13px; line-height: 1.5; color: var(--fg); }
+.card.toBoss { transition: transform .5s cubic-bezier(.45, 0, .85, .55); transform: translate(var(--dx), var(--dy)) rotateY(180deg) scale(.45); border-color: #6a3fa0; background: #2a1440; }
+.card.burnt { opacity: 0; transition: opacity .08s; }
+/* 燃えたカード：ゆらめく炎になって大彗星へ吸いこまれる（炎の形はキャンバスで毎フレーム描く） */
+.flame { position: absolute; width: 96px; height: 120px; margin: -72px 0 0 -48px; pointer-events: none; transform-origin: 50% 60%;
+  filter: drop-shadow(0 0 10px rgba(255, 130, 60, .8)); }
+.nest { display: flex; flex-direction: column; align-items: center; gap: 0; }
+#nest { width: 150px; height: 105px; }
+#nestLabel.stolen { color: var(--pink); font-family: var(--display); font-weight: var(--dw); font-size: 14px; animation: paperOpen .58s steps(1, end) both; }
+#nest.gulp { animation: gulp .4s ease; }
+@keyframes gulp { 40% { transform: scale(1.15); filter: drop-shadow(0 0 14px rgba(200, 120, 255, .9)); } }
+.cards.done .card { pointer-events: none; }
+
+/* リザルト */
+.big { font: var(--dw) 50px var(--display); color: var(--star); font-variant-numeric: tabular-nums; line-height: 1; }
+.naming { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#resHero { width: 140px; height: 140px; margin: -30px 0; }
+.stage-name { margin: 0; font-size: 13px; color: var(--muted); }
+.star-name { margin: -4px 0 0; min-height: 1.1em; line-height: 1.1; font: 400 34px var(--logo); color: var(--pink); }
+.star-title { margin: 0; min-height: 1em; line-height: 1; font: 400 20px var(--logo); color: var(--star); }
+.star-title.pop { animation: namePop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+.star-name.pop { animation: namePop .6s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes namePop { from { transform: scale(.3); opacity: 0; } }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 300px; min-height: 24px; }
+.chips span { padding: 2px 10px; border: 1px solid var(--mint); border-radius: 99px; font-size: 12px; color: var(--mint); animation: deal .3s ease both; }
+.chips span.cat-power { border-color: #ff9ecf; color: #ff9ecf; } .chips span.cat-tech { border-color: #8ff0d2; color: #8ff0d2; } .chips span.cat-speed { border-color: #9cc8ff; color: #9cc8ff; }
+.chips span.top { border-color: var(--star); color: var(--star); box-shadow: 0 0 10px rgba(255, 231, 163, .6); }
+.stats { display: grid; grid-template-columns: auto auto auto auto; gap: 3px 12px; margin: 0; padding: 8px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); font-size: 12px; color: var(--muted); text-align: left; }
+.stats div { display: contents; }
+.stats dt { margin: 0; }
+.stats dd { margin: 0; color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* チュートリアル（ゲーム画面の上に、見出しと「つぎへ」だけを重ねる） */
+#tut { position: absolute; inset: 0; pointer-events: none; }
+.tut-card {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(31, 25, 66, .86);
+  text-align: center;
+}
+.tut-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 6px; }
+.tut-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.tut-dots i.on { background: var(--star); }
+.tut-card h2 { margin: 0 0 4px; font: var(--dw) 18px/1.4 var(--display); color: var(--star); white-space: pre-line; }
+.tut-card p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--fg); white-space: pre-line; }
+.tut-btns { position: absolute; left: 14px; right: 14px; bottom: 18px; display: flex; justify-content: space-between; pointer-events: auto; }
+.tut-skip, .tut-next { padding: 10px 22px; border-radius: 99px; font-family: var(--display); font-weight: var(--dw); font-size: 15px; }
+.tut-skip { border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
+.tut-next { border: none; background: var(--star); color: var(--dark); }
+
+/* テスト用の欄（?dev とプレビュー版だけ） */
+.dev { width: min(260px, 100%); overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); font-size: 13px; text-align: left; }
+.dev summary { color: var(--muted); cursor: pointer; }
+.dev label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; margin-top: 6px; }
+.dev input[type=range] { width: 100%; accent-color: var(--pink); }
+.dev output { color: var(--star); }
+.dev-se { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; color: var(--muted); }
+.dev-se button { font: inherit; font-size: 12px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text, #fff); }
+
+/* カードビューワー（テスト用）：上は本物のゲームが動き、下半分にカードを並べる */
+#viewer { position: absolute; inset: 0; pointer-events: none; }
+#viewer > * { pointer-events: auto; }
+.vw-top { position: absolute; top: 8px; left: 8px; display: flex; gap: 6px; }
+.vw-panel { position: absolute; left: 0; right: 0; bottom: 0; top: 52%; overflow: hidden; padding: 8px 10px 0; background: rgba(14, 11, 34, .93); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.vw-head { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; color: var(--muted); }
+.vw-who { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); text-align: left; }
+.vw-who.boss { border-color: #6a3fa0; }
+.vw-lbl { font-size: 10px; color: var(--star); }
+.vw-title { font: 400 13px var(--logo); }
+.vw-name { font: 400 20px var(--logo); color: var(--fg); }
+.vw-eq { color: var(--pink); line-height: 1.4; }
+.vw-hint { margin: 0; font-size: 10px; color: var(--muted); text-align: center; }
+.vw-cards { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; align-content: start; gap: 8px; padding-bottom: 16px; }
+.vw-card { width: auto; max-width: none; animation: none; cursor: pointer; text-align: left; padding: 10px 8px; gap: 4px; }
+.vw-card .me { font-size: 12px; }
+.vw-card .boss { font-size: 11px; }
+.vw-word { display: flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.vw-word .parts b { font: 700 12px var(--body, inherit); color: var(--pink); margin: 0 6px 0 2px; }
+.vw-word .parts i { font-style: normal; white-space: nowrap; display: inline-block; }
+.vw-word .hat { margin-left: auto; flex: none; display: flex; flex-direction: column; align-items: center; font-size: 10px; }
+.vw-word .hat img { width: 44px; height: auto; }
+.vw-btns { display: flex; gap: 6px; margin-top: auto; }
+.vw-b { flex: 1; padding: 4px 6px; white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); color: var(--fg); font: inherit; font-size: 10px; cursor: pointer; }
+.vw-top .vw-b { padding: 5px 12px; font-size: 12px; }
+.vw-cards > .vw-hint { grid-column: 1 / -1; margin-top: 8px; font-size: 12px; color: var(--pink); }
+.vw-tech { border-color: #6a3fa0; }
+.vw-tech .head b { color: var(--pink); }
+.vw-open { margin-top: 8px; width: 100%; padding: 8px; font-size: 13px; }
+
+/* タイトルの起動アニメ：流れ星 → 星が生まれる（輪が広がる） → ロゴが1文字ずつ弾む → ボタンが下から */
+#title .shoot, #title .burst, #title .kyupin { position: absolute; left: var(--hx, 50%); top: var(--hy, 50%); pointer-events: none; opacity: 0; }
+#title .shoot { width: 90px; height: 3px; margin: -1.5px 0 0 -6px; border-radius: 2px; background: linear-gradient(90deg, #fff, rgba(255, 231, 163, 0)); transform-origin: 6px 50%; rotate: -35deg; }
+#title .burst { width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 3px solid var(--star); border-radius: 50%; }
+/* キュピーン：コマ数をおさえて描く（js/view/screens.js の kyupin） */
+#title .kyupin { width: 260px; height: 260px; margin: -130px 0 0 -130px; opacity: 1; }
+/* ひゅーん → キュピーン → 主人公 → 星粒 → オービット */
+#title.intro .shoot { animation: shootIn .55s cubic-bezier(.5, 0, .9, .6) both; }
+#title.intro .burst { animation: burst .8s ease-out 1.15s both; }
+#title.intro #titleHero { animation: heroIn .6s cubic-bezier(.34, 1.56, .64, 1) 1.15s backwards; }
+#title.intro .logo > .ch { animation: chIn .5s cubic-bezier(.34, 1.56, .64, 1) backwards; animation-delay: calc(1.7s + var(--i) * 120ms); }
+#title.intro .logo span .ch { animation: chIn .5s cubic-bezier(.34, 1.56, .64, 1) backwards; animation-delay: calc(2.2s + (var(--i) - 2) * 60ms); }
+#title.intro .eyebrow, #title.intro .best { animation: fadeIn .5s ease 2.75s backwards; }
+#title.intro #startBtn { animation: riseIn .5s cubic-bezier(.34, 1.4, .64, 1) 2.85s backwards; }
+#title.intro #howBtn { animation: riseIn .5s cubic-bezier(.34, 1.4, .64, 1) 2.97s backwards; }
+#title.intro #rankBtn, #title.intro .dev { animation: riseIn .5s cubic-bezier(.34, 1.4, .64, 1) 3.09s backwards; }
+.logo .ch { display: inline-block; font-style: normal; }
+@keyframes shootIn { 0% { opacity: 0; translate: 220px -160px; } 15% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; translate: 0 0; } }
+@keyframes burst { 0% { opacity: 0; scale: .3; } 1% { opacity: .9; scale: .3; } 100% { opacity: 0; scale: 7; border-width: 1px; } }
+@keyframes heroIn { from { opacity: 0; scale: .1; } }
+@keyframes chIn { from { opacity: 0; translate: 0 -26px; scale: .3; rotate: -14deg; } }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes riseIn { from { opacity: 0; translate: 0 26px; } }
+
+/* 文字の知らせ：キュピーンと同じく、くしゃっと丸めた紙が開くように 12コマ/秒 で出る */
+@keyframes paperOpen {
+  0%     { opacity: 1; transform: rotate(-30deg) scale(.16, .1) skewX(30deg); }
+  14.28% { transform: rotate(-21deg) scale(.5, .3) skewX(-24deg); }
+  28.57% { transform: rotate(-12deg) scale(1.12, .95) skewX(10deg); }
+  42.85% { transform: rotate(-6deg) scale(.92, 1.02) skewX(-5deg); }
+  57.14% { transform: rotate(-2deg) scale(1.01, .98) skewX(2deg); }
+  71.42% { transform: rotate(0) scale(1.02); }
+  100%   { opacity: 1; transform: none; }
+}
+#resBest.new { animation: paperOpen .58s steps(1, end) .25s both; }
+#ctitle.paper { animation: paperOpen .58s steps(1, end) backwards; }
+
+/* マイランキング：1位は金のふちで大きく */
+#rank { background: rgba(14, 11, 34, .9); gap: 10px; }
+#rank .eyebrow { font: var(--dw) 20px var(--display); color: var(--star); letter-spacing: .1em; }
+.rank { list-style: none; margin: 0; padding: 0; width: min(100%, 320px); display: flex; flex-direction: column; gap: 8px; }
+.rk { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 2px solid var(--line); border-radius: 14px; background: var(--panel); text-align: left; cursor: pointer; }
+.rk:active { transform: translateY(1px); }
+.rk .no { width: 26px; flex-shrink: 0; text-align: center; font: var(--dw) 20px var(--display); color: var(--muted); }
+.rk .face { width: 56px; height: 56px; flex-shrink: 0; margin: -6px 0; }
+.rk .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.rk .sc { font: var(--dw) 20px var(--display); color: var(--fg); font-variant-numeric: tabular-nums; }
+.rk .nm { font: 400 16px var(--logo); color: var(--pink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rk .nm i { font-style: normal; margin-right: 6px; }
+.rk .sub { font-size: 11px; color: var(--muted); }
+.rk.first { padding: 14px 14px; border-color: var(--star); background: linear-gradient(135deg, rgba(255, 231, 163, .22), rgba(255, 158, 207, .14)); box-shadow: 0 0 18px rgba(255, 231, 163, .35); }
+.rk.first .no { color: var(--star); font-size: 30px; text-shadow: 0 0 10px rgba(255, 231, 163, .8); }
+.rk.first .face { width: 76px; height: 76px; }
+.rk.first .sc { font-size: 28px; color: var(--star); }
+.rk.first .nm { font-size: 20px; }
+/* リザルトの「タイトルにもどる」：ボタンより控えめな文字のリンク */
+.link { border: none; background: none; padding: 6px 12px; color: var(--muted); font: 14px var(--display); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }

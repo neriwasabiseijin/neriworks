@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>星粒オービット</title>
+<link rel="stylesheet" href="../common/system.css">
+<script src="../common/system.js" data-frame="#stage" data-loading></script>
+<script src="../common/sound.js" data-bgm="0" data-sfx="0" data-button></script>
+<script src="../common/share.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link id="webfonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Darumadrop+One&family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="title" class="overlay">
+      <i class="shoot" aria-hidden="true"></i><canvas class="kyupin" id="kyupin" width="520" height="520" aria-hidden="true"></canvas><i class="burst" aria-hidden="true"></i>
+      <p class="eyebrow" id="version">試作版</p>
+      <h1 class="logo">星粒<span>オービット</span></h1>
+      <canvas id="titleHero" width="160" height="160" aria-hidden="true"></canvas>
+      <p id="titleBest" class="best"></p>
+      <button id="startBtn" type="button" class="primary">あそぶ</button>
+      <button id="howBtn" type="button" class="secondary">あそびかた</button>
+      <button id="rankBtn" type="button" class="secondary" hidden>マイランキング</button>
+    </div>
+
+    <div id="tut" hidden>
+      <div class="tut-card">
+        <div class="tut-dots" id="tutDots"></div>
+        <h2 id="tutCap"></h2>
+        <p id="tutSub"></p>
+      </div>
+      <div class="tut-btns">
+        <button id="tutSkip" type="button" class="tut-skip">スキップ</button>
+        <button id="tutNext" type="button" class="tut-next">つぎへ</button>
+      </div>
+    </div>
+
+    <div id="cardpick" class="overlay" hidden>
+      <div class="nest"><canvas id="nest" width="200" height="140" aria-hidden="true"></canvas><p class="note" id="nestLabel">大彗星</p></div>
+      <p class="ctitle" id="ctitle">強化をえらぶ</p>
+      <div class="catbar" id="catbar"></div>
+      <div class="cards" id="cards"></div>
+      <p class="note">のこった1枚の技は 大彗星のものに</p>
+    </div>
+
+    <div id="result" class="overlay" hidden>
+      <p class="eyebrow">おしまい</p>
+      <div class="big" id="resScore">0</div>
+      <p id="resBest" class="best"></p>
+      <div class="naming">
+        <canvas id="resHero" width="260" height="260" aria-hidden="true"></canvas>
+        <p class="stage-name" id="resStage"></p>
+        <p class="star-title" id="resTitle"></p>
+        <p class="star-name" id="resName"></p>
+      </div>
+      <div class="chips" id="resCards"></div>
+      <dl class="stats" id="resRecs"></dl>
+      <button id="retryBtn" type="button" class="primary">もう一回</button>
+      <button id="shareBtn" type="button" class="secondary">シェアする</button>
+      <button id="backBtn" type="button" class="secondary" hidden>ランキングにもどる</button>
+      <button id="homeBtn" type="button" class="link">タイトルにもどる</button>
+    </div>
+
+    <div id="rank" class="overlay" hidden>
+      <p class="eyebrow">マイランキング</p>
+      <ol class="rank" id="rankList"></ol>
+      <p class="note">タップでそのときのリザルトを見る</p>
+      <button id="rankClose" type="button" class="secondary">とじる</button>
+    </div>
+
+    <div id="viewer" hidden>
+      <div class="vw-top"><button id="vwReset" type="button" class="vw-b">リセット</button><button id="vwClose" type="button" class="vw-b">とじる</button></div>
+      <div class="vw-panel">
+        <div class="vw-head" id="vwHead"></div>
+        <div class="catbar" id="vwCat"></div>
+        <p class="vw-hint">カードをタップで自機が取る／下の技をタップで大彗星に持たせる</p>
+        <div class="vw-cards" id="vwCards"></div>
+      </div>
+    </div>
+    <div id="fail" class="overlay" hidden>
+      <p class="lead">読み込みに失敗しました。<br>通信のよい所で、もう一度読み込んでください。</p>
+      <button id="reloadBtn" type="button" class="primary">もう一度読み込む</button>
+    </div>
+  </div>
+</div>
+<script src="js/core/config.js"></script>
+<script src="js/core/util.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/media/load.js"></script>
+<script src="js/media/atlas.js"></script>
+<script src="js/media/synth.js"></script>
+<script src="js/media/music.js"></script>
+<script src="js/media/sfx.js"></script>
+<script src="js/game/state.js"></script>
+<script src="js/game/player.js"></script>
+<script src="js/game/sats.js"></script>
+<script src="js/game/enemies.js"></script>
+<script src="js/game/boss.js"></script>
+<script src="js/game/waves.js"></script>
+<script src="js/game/cards.js"></script>
+<script src="js/game/update.js"></script>
+<script src="js/view/canvas.js"></script>
+<script src="js/view/pellets.js"></script>
+<script src="js/view/render.js"></script>
+<script src="js/view/looks.js"></script>
+<script src="js/view/hud.js"></script>
+<script src="js/view/icons.js"></script>
+<script src="js/view/cardpick.js"></script>
+<script src="js/view/screens.js"></script>
+<script src="js/view/viewer.js"></script>
+<script src="js/view/share.js"></script>
+<script src="js/view/tutorial.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
