@@ -68,7 +68,7 @@ const music = (() => {
       lfoDepth.gain.setTargetAtTime(full ? .22 : 0, ac.currentTime, .1);
     },
     hype(x) { hype = Math.min(1, hype + x); },
-    setBoss(b, cards = 0) { boss = b; if (drone) drone.gain.setTargetAtTime(b ? .03 + cards * .025 : 0, ac.currentTime, .5); },
+    setBoss(b, cards = 0) { boss = b; if (drone) drone.gain.setTargetAtTime(b ? .03 + Math.min(cards, 6) * .025 : 0, ac.currentTime, .5); },   // 技が多くても低音は一定まで（大きすぎると効果音がかき消される）
     muffle(m) { muffled = m; if (m) tension = 0; if (ac) { applyLP(); lfoDepth.gain.setTargetAtTime(0, ac.currentTime, .1); } },
   };
 })();
