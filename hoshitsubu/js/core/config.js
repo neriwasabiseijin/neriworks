@@ -1,7 +1,7 @@
 "use strict";
 // 定数：画面の大きさ、星の段階、強化カード、敵の基本値、調整値
 
-const VERSION = "ver1.0.2";
+const VERSION = "ver1.0.3";
 // 見出し・数字（キャンバスに描く文字）のフォント。CSS の --display / --dw と合わせる
 const HEAD_FONT = "'Yusei Magic', 'Zen Maru Gothic', sans-serif", HEAD_W = 400;
 // ロゴと星の名前：かなはだるまドロップ、漢字は入っていないのでゆうせいマジックで出す

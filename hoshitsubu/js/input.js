@@ -4,6 +4,7 @@
 let pointerId = null, lastPX = 0, lastPY = 0;
 cv.addEventListener("pointerdown", e => {
   if (scene !== "play" || pointerId !== null || (window.MG && MG.paused)) return;
+  frozen = false;
   pointerId = e.pointerId; cv.setPointerCapture(e.pointerId);
   lastPX = e.clientX; lastPY = e.clientY; held = true;
 });
@@ -24,7 +25,14 @@ function endPointer(e) {
   held = false;
 }
 cv.addEventListener("pointerup", endPointer);
-cv.addEventListener("pointercancel", endPointer);
+// 指をブラウザやOSに取られたとき（iPhone の Safari で画面下のアドレスバーを横にはらうとタブが切り替わる、など）は、
+// 放たずにその場でゲームを止め、もう一度画面にふれたらその指で続ける。操作できないまま弾を受けないように
+cv.addEventListener("pointercancel", e => {
+  if (e.pointerId !== pointerId) return;
+  releaseInput();
+  if (scene === "play") frozen = true;
+});
+addEventListener("blur", () => { if (scene === "play" && held) { releaseInput(); frozen = true; } });
 // 押していた指を離したことにする（波の終わり、ゲームオーバー、カード選び）
 function releaseInput() { pointerId = null; held = false; }
 // 音量画面を開いたら、押していた指はいったん離したことにする（衛星は放たずに持ったまま）

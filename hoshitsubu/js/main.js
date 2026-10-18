@@ -13,7 +13,8 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(1 / 30, (now - last) / 1000);
   last = now;
-  if (!(window.MG && MG.paused)) { update(dt); drawMiniHeroes(dt); }
+  if (scene !== "play") frozen = false;
+  if (!(window.MG && MG.paused) && !frozen) { update(dt); drawMiniHeroes(dt); }
   draw();
   requestAnimationFrame(frame);
 }

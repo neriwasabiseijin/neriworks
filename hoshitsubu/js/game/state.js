@@ -4,6 +4,7 @@
 let G = null;            // 1プレイの状態
 let scene = "title";     // title / play / cards / dying / result / tutorial
 let held = false;        // 押しているか（引力圏が開いている）
+let frozen = false;      // 指をブラウザに取られて止めているか（画面にふれると再開）
 let tNow = 0;            // 経過時間（衛星の公転などに使う）
 const bgStars = Array.from({ length: 90 }, () => ({ x: Math.random() * W, y: Math.random() * H, z: rand(.2, 1) }));
 
