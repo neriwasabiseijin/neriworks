@@ -42,7 +42,7 @@ function update(dt) {
   else updateTutorial(dt);
 
   // 衛星を軌道へ寄せる
-  G.sats.forEach((s, i) => { const tg = satTarget(i, tNow), k = Math.min(1, dt * 14); s.x += (tg.x - s.x) * k; s.y += (tg.y - s.y) * k; });
+  G.sats.forEach((s, i) => { const tg = satTarget(i, tNow), k = Math.min(1, dt * 14); s.x += (tg.x - s.x) * k; s.y += (tg.y - s.y) * k; if (!s.orbit && dist2(s, tg) < 10 * 10) s.orbit = 1; });
 
   G.enemies.forEach(e => updateEnemy(e, dt));
   if (G.boss) updateBoss(G.boss, dt);
@@ -95,6 +95,7 @@ function update(dt) {
 
   // 周回中の衛星は盾：ぶつかった敵にダメージ（岩くずの本体には効かない）
   keep(G.sats, s => {
+    if (!s.orbit) return true;   // 軌道に着くまでは敵に当たらない（撃った敵の目の前でとらえても、その場で割れない）
     for (const e of G.enemies) if (!e.dead && dist2(s, e) < (e.r + 4) ** 2) {
       addFx(s.x, s.y, s.color, 3);
       if (e.type === "itazura") { killEnemy(e, 0); return false; } // いたずら流れ星は衛星に当たると砕ける
