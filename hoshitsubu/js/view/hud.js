@@ -28,10 +28,10 @@ function drawHUD() {
     g.save(); g.translate(lx, 41); g.scale(pop, pop); g.font = "700 12px 'Zen Maru Gothic', sans-serif";
     g.fillStyle = e < .7 ? "#ffe7a3" : "#b9aee0"; g.lineWidth = 3; g.strokeStyle = "rgba(14,11,34,.8)"; g.strokeText(lvT, 0, 0); g.fillText(lvT, 0, 0); g.restore();
   } else g.fillText(lvT, lx, 41);
-  // 残り：小さな星3つ。減った瞬間は、なくなった星が赤くふくらんで消え、残りが点滅する
+  // 残り：小さな星（テクニカルの型で増えた分も、減ったあとは空の枠として残す）。減った瞬間は、なくなった星が赤くふくらんで消え、残りが点滅する
   const k = G.lifeHit / 1.2, blink = k > 0 && Math.floor(k * 10) % 2;
   const healing = lv("heal") > 0 && G.lives < lifeMax();
-  const nL = Math.max(3, G.lives + (k > 0 || healing ? 1 : 0));
+  const nL = Math.max(lifeMax(), G.lives + (k > 0 || healing ? 1 : 0));
   for (let i = 0; i < nL; i++) {
     const x = W - 22 - (nL - 1 - i) * 24, y = 20, on = i < G.lives;
     if (!on && i === G.lives && k > 0) { drawLife(x, y, false, 0); drawLife(x, y, false, k); }
