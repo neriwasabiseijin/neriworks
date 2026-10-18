@@ -219,4 +219,15 @@ function draw() {
   drawRename();
   if ((scene === "play" || scene === "cards" || scene === "dying") && !G.viewer) drawHUD();
   if (scene === "tutorial") drawFinger();
+  if (frozen) drawFrozen();
+}
+
+// 指をブラウザに取られて止めている間：画面を少し暗くして「ふれると再開」
+function drawFrozen() {
+  g.fillStyle = "rgba(14,11,34,.45)"; g.fillRect(-20, -20, W + 40, H + 40);
+  g.globalAlpha = .75 + .25 * Math.sin(performance.now() / 300);
+  g.font = `${HEAD_W} 22px ${HEAD_FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.lineWidth = 4; g.strokeStyle = "rgba(14,11,34,.8)"; g.strokeText("ふれると再開", W / 2, H / 2);
+  g.fillStyle = "#ffe7a3"; g.fillText("ふれると再開", W / 2, H / 2);
+  g.textBaseline = "alphabetic"; g.globalAlpha = 1;
 }
