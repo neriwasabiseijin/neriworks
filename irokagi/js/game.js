@@ -188,11 +188,13 @@ function chartFrom(d){const out=[];
   const n={t,kind,lane:ln,k:KOF[si],sec:SECTIONS[si][0],c:Math.floor(hash(bar,Math.round(b*12),5)*4)};if(kind==='mid')n.from=1-ln;out.push(n);}
  for(const[bar,ln]of d.holds){const si=secAt(bar);out.push({t:bar*BAR,tEnd:(bar+1)*BAR,hold:true,k:KOF[si],sec:SECTIONS[si][0],lane:ln});}
  out.sort((a,b)=>a.t-b.t);assignCombos(out);return out;}
+// the chart from data/charts; a song pasted in with a new id has none yet, so it starts from a generated one
+function fileChart(id){return window.CHARTS&&CHARTS[id]||null;}
 function baseChart(){rnd=mulberry(hash(SONG.bpm,SONG.name.length,7)*4294967296>>>0);return genChart();}// the song's own chart, the same every time
 
 function newGame(){
  // every song has one fixed chart: the one the editor shows, or the player's edit of it
- const ed=loadChart(SONG.id);const all=ed?chartFrom(ed):baseChart();notes=all.filter(n=>!n.hold);holds=all.filter(n=>n.hold);ni=0;
+ const ed=loadChart(SONG.id)||fileChart(SONG.id);const all=ed?chartFrom(ed):baseChart();notes=all.filter(n=>!n.hold);holds=all.filter(n=>n.hold);ni=0;
  buildMax=[0,1].map(k=>Math.max(1,notes.filter(n=>n.sec==='build'&&n.k===k).length));
  buildStock=[0,0];districtSat=[0,0];released=[false,false];
  score=0;combo=0;maxCombo=0;nPerf=0;nGood=0;nMiss=0;
@@ -558,6 +560,7 @@ function buildList(){const L=$('songList');L.innerHTML='';
   const info=document.createElement('div');info.className='sinfo';info.innerHTML='<div class="sname"></div><div class="ssub"></div>';info.children[0].textContent=sg.name;info.children[1].textContent=sg.sub;el.appendChild(info);
   const meta=document.createElement('div');meta.className='smeta';meta.innerHTML='BPM '+sg.bpm+'<br>'+'◆'.repeat(sg.diff)+'<span style="opacity:.3">'+'◆'.repeat(3-sg.diff)+'</span><br>'+(b?'彩度 <b>'+b.sat+'%</b>':'—');el.appendChild(meta);
   if(loadChart(sg.id))meta.innerHTML+='<br><span style="color:var(--cyan)">譜面 編集済み</span>';
+  if(localSongs()[sg.id])meta.innerHTML+='<br><span style="color:var(--cyan)">曲 変更あり</span>';
   el.addEventListener('click',()=>pickSong(sg));L.appendChild(el);}}
 const ENDINGS=[['auto','曲ごとのおすすめ'],['tag','A 最後の一行をくり返して着地'],['intro','E イントロに戻って締める'],['fade','F 走り去ってフェードアウト'],['cut','G 一撃で切って締める'],['hits','いまの締め（止め打ち）']];
 const KEYUPS=[['auto','転調：曲ごと'],['on','転調：あり'],['off','転調：なし']];
