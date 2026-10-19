@@ -62,13 +62,16 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 #edBar{width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:6px 8px 12px;box-sizing:border-box;border-top:1px solid #222}
 #edBar button.sub{font-size:13px;padding:5px 10px}
 #edIO{position:absolute;inset:0;background:#000e;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;z-index:6}
+#songIO{background:#000e;gap:10px;padding:16px;box-sizing:border-box}
+#sgText{width:100%;max-width:360px;height:50%;font-size:11px;background:#111;color:#ddd;border:1px solid #444;-webkit-user-select:text;user-select:text}
+#loading{background:#000;z-index:20}
 #edText{width:100%;max-width:360px;height:40%;font-size:11px;background:#111;color:#ddd;border:1px solid #444;-webkit-user-select:text;user-select:text}
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="cv"></canvas></div>
 <div id="title" class="ov">
-  <div class="tag">試作 ver0.5.0</div>
+  <div class="tag">試作 ver0.6.0</div>
   <div class="logo">彩鍵</div>
   <div class="ruby">いろかぎ</div>
   <div class="how">
@@ -106,6 +109,13 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
   <div class="lsBtns"><button id="lsPause">一時停止</button><button id="lsEd" class="sub hide">エディタへ</button><button id="lsBack" class="sub">もどる</button></div>
 </div>
 <button id="edBack" class="tool hide">■ エディタへ</button>
+<div id="songIO" class="ov hide">
+  <div class="lbl" id="sgName"></div>
+  <div class="det" id="sgMsg">この曲のデータです。書き出してほかのAIに渡したり、返ってきたデータを貼りつけて試したりできます。</div>
+  <textarea id="sgText"></textarea>
+  <div class="lsBtns"><button id="sgApply">貼りつけたデータで試す</button><button id="sgListen" class="sub">▶ 試聴</button></div>
+  <div class="lsBtns"><button id="sgCopy" class="sub">コピー</button><button id="sgReset" class="sub">元に戻す</button><button id="sgClose" class="sub">もどる</button></div>
+</div>
 <div id="editor" class="ov hide">
   <div id="edHead"><span id="edName"></span><span style="font-size:11px;color:var(--dim)">空き：置く　ノーツ：消す　中：上下どちらの移動でも斬れる</span></div>
   <canvas id="edCv"></canvas>
@@ -125,11 +135,7 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
   <button id="toSelBtn" class="sub">街区をえらぶ</button>
   <button id="toEdBtn" class="sub hide">エディタへ</button>
 </div>
-<script src="js/songs.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/hero.js"></script>
-<script src="js/scenes.js"></script>
-<script src="js/game.js"></script>
-<script src="js/tools.js"></script>
+<div id="loading" class="ov"><div class="det" id="loadMsg">読み込み中…</div><button id="reloadBtn" class="hide">読み込み直す</button></div>
+<script src="js/data.js"></script>
 </body>
 </html>
