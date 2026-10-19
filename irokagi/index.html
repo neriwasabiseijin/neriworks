@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>彩鍵 試作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050507;--fg:#e6e6ea;--dim:#8a8c93;--cyan:#39f0ff;--pink:#ff3d8b}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:'DotGothic16',monospace}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#cv{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:16px;box-sizing:border-box}
+.ov.hide{display:none}
+#title{background:linear-gradient(#000c,#000a)}
+.logo{font-size:56px;letter-spacing:.12em;line-height:1;color:#f2f2f4;text-shadow:3px 0 0 var(--pink),-3px 0 0 var(--cyan)}
+.ruby{font-size:16px;letter-spacing:.6em;color:var(--dim);margin-left:.6em}
+.tag{font-size:12px;color:var(--dim);border:1px solid #333;padding:2px 8px}
+.how{font-size:14px;line-height:1.9;color:#cfd0d4;margin:6px 0}
+.how b{color:var(--cyan);font-weight:normal}
+.how i{color:var(--pink);font-style:normal}
+button{font-family:inherit;font-size:20px;color:#050507;background:#f2f2f4;border:0;padding:10px 34px;cursor:pointer;box-shadow:3px 3px 0 var(--pink),-3px -3px 0 var(--cyan)}
+button:active{transform:translate(1px,1px)}
+button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;border:1px solid #555;box-shadow:none}
+.hide{display:none!important}
+#cal{background:#000e}
+#select{background:#000e;justify-content:flex-start;padding-top:48px;overflow-y:auto}
+#songList{display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px}
+.song{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid #333;background:#0b0b0e;cursor:pointer;color:var(--fg)}
+.song:active{transform:translate(1px,1px)}
+.sw{width:30px;height:38px;flex:none;image-rendering:pixelated}
+.sinfo{flex:1;min-width:0}
+.sname{font-size:17px}
+.ssub{font-size:11px;color:var(--dim);margin-top:2px}
+.smeta{font-size:11px;color:var(--dim);text-align:right;white-space:nowrap;line-height:1.6}
+.smeta b{font-weight:normal;color:#fff}
+#endBox{width:100%;max-width:340px;margin-top:14px;border-top:1px solid #333;padding-top:10px}
+.elbl{font-size:12px;color:var(--dim);margin-bottom:6px}
+#endList{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.endRow{display:flex;gap:5px}.endRow .endOpt{flex:1;text-align:center;padding:6px 2px}
+.endOpt{font-size:13px;padding:6px 10px;border:1px solid #333;color:#cfd0d4;cursor:pointer}
+.endOpt.on{border-color:var(--cyan);color:#fff;box-shadow:inset 3px 0 0 var(--cyan)}
+#result{background:#000b}
+.big{font-size:64px;line-height:1;color:#fff}
+.big small{font-size:22px}
+.lbl{font-size:13px;color:var(--dim);letter-spacing:.3em}
+.cmt{font-size:16px;color:#e9e9ee}
+.det{font-size:13px;color:var(--dim);line-height:1.8}
+#toolBox{width:100%;max-width:340px;margin-top:4px}
+.tool{position:absolute;z-index:5}
+#listen{left:0;right:0;bottom:0;background:#000d;border-top:1px solid #333;padding:10px 16px 16px;display:flex;flex-direction:column;gap:8px}
+#listen .lsTop{display:flex;justify-content:space-between;font-size:13px;color:#cfd0d4}
+#lsSeek{width:100%;accent-color:var(--cyan)}
+.lsBtns{display:flex;gap:8px;justify-content:center}
+.lsBtns button,#edBar button,#edIO button{font-size:14px;padding:6px 14px;box-shadow:none}
+#edBack{left:8px;top:8px;font-size:13px;padding:5px 12px;box-shadow:none;background:#000c;color:#e6e6ea;border:1px solid #555}
+#editor{background:#050507;padding:0;gap:0;justify-content:flex-start}
+#edHead{width:100%;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;box-sizing:border-box;font-size:14px}
+#edCv{flex:1;width:100%;min-height:0;touch-action:none;display:block}
+#edInfo{font-size:11px;color:#ff7070;min-height:14px;padding:2px 8px}
+#edBar{width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:6px 8px 12px;box-sizing:border-box;border-top:1px solid #222}
+#edBar button.sub{font-size:13px;padding:5px 10px}
+#edIO{position:absolute;inset:0;background:#000e;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;z-index:6}
+#edText{width:100%;max-width:360px;height:40%;font-size:11px;background:#111;color:#ddd;border:1px solid #444;-webkit-user-select:text;user-select:text}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div id="title" class="ov">
+  <div class="tag">試作 ver0.5.0</div>
+  <div class="logo">彩鍵</div>
+  <div class="ruby">いろかぎ</div>
+  <div class="how">
+    色を買い占められた灰色の街。<br>
+    敵が抱えた色を奪い返して、<br>サビで街へ解き放て。<br><br>
+    <b>タップ</b>　同じ高さの敵を斬る<br>
+    <b>上下フリック</b>　段を飛び移って斬る<br>
+    <b>上の段で上へ</b>　ジャンプ斬り<br>
+    <b>下の段で下へ</b>　スライディング<br>
+    <i>光の帯</i>　押したまま、サビの頭で離す<br>
+    <span style="color:var(--dim)">指は画面の下のほうで</span>
+  </div>
+  <button id="startBtn">あそぶ</button>
+  <button id="calBtn" class="sub">タイミング調整</button>
+  <div class="det" id="latInfo">音を出して遊んでください</div>
+</div>
+<div id="cal" class="ov hide">
+  <div class="lbl">タイミング調整</div>
+  <div class="how" id="calMsg">画面は見ずに、聞こえた音に合わせて<br>8回タップしてください。<br>ワイヤレスイヤホンのときに使います。</div>
+  <div class="big" id="calVal"></div>
+  <button id="calGo">はじめる</button>
+  <button id="calOk" class="hide">決定</button>
+  <button id="calBack" class="sub">もどる</button>
+</div>
+<div id="select" class="ov hide">
+  <div class="lbl">街区をえらぶ</div>
+  <div id="songList"></div>
+  <div id="endBox"><div class="elbl">締め方の聴き比べ（試作用）</div><div id="endList"></div><div id="fromLast" class="endOpt">ラスサビから始める</div></div>
+  <div id="toolBox"><div class="elbl">街区をタップしたとき（試作用）</div><div class="endRow" id="toolRow"></div></div>
+  <button id="selBack" class="sub">もどる</button>
+</div>
+<div id="listen" class="tool hide">
+  <div class="lsTop"><span id="lsName"></span><span id="lsBar"></span></div>
+  <input type="range" id="lsSeek" min="0" max="43" step="1" value="0">
+  <div class="lsBtns"><button id="lsPause">一時停止</button><button id="lsEd" class="sub hide">エディタへ</button><button id="lsBack" class="sub">もどる</button></div>
+</div>
+<button id="edBack" class="tool hide">■ エディタへ</button>
+<div id="editor" class="ov hide">
+  <div id="edHead"><span id="edName"></span><span style="font-size:11px;color:var(--dim)">空き：置く　ノーツ：消す　中：上下どちらの移動でも斬れる</span></div>
+  <canvas id="edCv"></canvas>
+  <div id="edInfo"></div>
+  <div id="edBar">
+    <button id="edListen">▶ 選んだ小節から聴く</button><button id="edPlay">▶ 選んだ小節から遊ぶ</button>
+    <button id="edSnap" class="sub">16分</button><button id="edExport" class="sub">書き出し</button><button id="edImport" class="sub">読み込み</button><button id="edReset" class="sub">元に戻す</button><button id="edClose" class="sub">もどる</button>
+  </div>
+  <div id="edIO" class="hide"><div class="det" id="edIOMsg"></div><textarea id="edText"></textarea><div class="lsBtns"><button id="edLoad">読み込む</button><button id="edIOClose" class="sub">閉じる</button></div></div>
+</div>
+<div id="result" class="ov hide">
+  <div class="lbl" id="rLbl">街の彩度</div>
+  <div class="big" id="rSat">0<small>%</small></div>
+  <div class="cmt" id="rCmt"></div>
+  <div class="det" id="rDet"></div>
+  <button id="againBtn">もう一度</button>
+  <button id="toSelBtn" class="sub">街区をえらぶ</button>
+  <button id="toEdBtn" class="sub hide">エディタへ</button>
+</div>
+<script src="js/songs.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/hero.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/game.js"></script>
+<script src="js/tools.js"></script>
+</body>
+</html>
