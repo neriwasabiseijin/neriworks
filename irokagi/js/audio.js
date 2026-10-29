@@ -1,15 +1,23 @@
 // Synthesized music. The whole mix goes through one lowpass: a gray city sounds muffled,
 // and the filter opens as color comes back.
-let A=null,master,musicBus,lp,verbIn,sfxBus,distIn,noiseBuf,lat=0;
+let A=null,bandOut,meter,meterBuf,master,musicBus,lp,verbIn,sfxBus,distIn,gtrCab,noiseBuf,lat=0;
+const GTR_DRIVE=14,GTR_V=0.82;let gtrMode=null;// null: by length (short notes cut), 'legato': connected
+// asymmetric clipping, so the drive adds the even harmonics an amp does
+const gtrCurve=(()=>{const c=new Float32Array(2048);for(let i=0;i<2048;i++){const x=i/1024-1;c[i]=Math.tanh(3*(x+0.08))-Math.tanh(0.24);}return c;})();
 const mf=m=>440*Math.pow(2,(m-69)/12);
 
 function initAudio(){
  if(A)return;
- A=new(window.AudioContext||window.webkitAudioContext)();
- const comp=A.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.connect(A.destination);
+ // a part faded to nothing (an ending with no color won back) asks for a ramp to 0, which throws and stops the song's clock
+ const xr=AudioParam.prototype.exponentialRampToValueAtTime;
+ if(!xr.safe){AudioParam.prototype.exponentialRampToValueAtTime=function(v,t){return xr.call(this,Math.abs(v)<1e-4?(v<0?-1e-4:1e-4):v,t);};AudioParam.prototype.exponentialRampToValueAtTime.safe=1;}
+ A=MG.sound.ctx;// one context per page, shared with the volume settings (common/sound.js)
+ const comp=A.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.connect(MG.sound.bgm);bandOut=comp;
  master=A.createGain();master.gain.value=0.72;master.connect(comp);
+ // listens to the band, so the result can wait for the last chord to ring out instead of a fixed time
+ meter=A.createAnalyser();meter.fftSize=1024;master.connect(meter);meterBuf=new Float32Array(meter.fftSize);
  // the cut sounds skip the music's compressor (a loud drop would push them down) and get a light limiter of their own
- sfxComp=A.createDynamicsCompressor();sfxComp.threshold.value=-8;sfxComp.ratio.value=8;sfxComp.attack.value=0.002;sfxComp.release.value=0.08;sfxComp.connect(A.destination);
+ sfxComp=A.createDynamicsCompressor();sfxComp.threshold.value=-8;sfxComp.ratio.value=8;sfxComp.attack.value=0.002;sfxComp.release.value=0.08;sfxComp.connect(MG.sound.sfx);
  const len=A.sampleRate*2.4;verbBuf=A.createBuffer(2,len,A.sampleRate);
  for(let c=0;c<2;c++){const d=verbBuf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
  noiseBuf=A.createBuffer(1,A.sampleRate,A.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
@@ -18,6 +26,7 @@ function initAudio(){
 // Everything a song plays goes through these buses. Seeking (the BGM preview) swaps in a fresh set
 // and lets the old one go silent, so notes already scheduled past the seek point never sound.
 let verbBuf,busOut=null,trim=null,sfxComp=null;
+function bandLevel(){if(!meter)return 0;meter.getFloatTimeDomainData(meterBuf);let s=0;for(const v of meterBuf)s+=v*v;return Math.sqrt(s/meterBuf.length);}
 function buildBuses(){
  busOut=A.createGain();busOut.connect(master);
  trim=A.createGain();trim.connect(busOut);
@@ -27,6 +36,10 @@ function buildBuses(){
  // shared distortion for the industrial kit and bass
  const ws=A.createWaveShaper();const cu=new Float32Array(1024);for(let i=0;i<1024;i++){const x=i/512-1;cu[i]=Math.tanh(x*4)*0.8;}ws.curve=cu;
  const wl=A.createBiquadFilter();wl.type='lowpass';wl.frequency.value=1800;ws.connect(wl);wl.connect(musicBus);distIn=ws;
+ // the lead guitar's speaker cabinet: no deep lows, a scooped middle, a presence bump, the fizz rolled off above 5k
+ const c1=A.createBiquadFilter();c1.type='highpass';c1.frequency.value=110;const c2=A.createBiquadFilter();c2.type='peaking';c2.frequency.value=700;c2.Q.value=0.9;c2.gain.value=-4;
+ const c3=A.createBiquadFilter();c3.type='peaking';c3.frequency.value=2300;c3.Q.value=1;c3.gain.value=5;const c4=A.createBiquadFilter();c4.type='lowpass';c4.frequency.value=5200;c4.Q.value=0.8;
+ c1.connect(c2);c2.connect(c3);c3.connect(c4);c4.connect(musicBus);const cs=A.createGain();cs.gain.value=0.25;c4.connect(cs);cs.connect(verbIn);gtrCab=c1;
  sfxBus=A.createGain();sfxBus.gain.value=0.8;sfxBus.connect(sfxComp);
 }
 // each section's loudness trim (songs.js lv), and the cut sounds a step louder where the band is full
@@ -141,9 +154,22 @@ function squareLead(t,m,dur,v,out=musicBus){const gn=gainTo(out);gn.connect(verb
 function supersaw(t,m,dur,v,out=musicBus){const gn=gainTo(out);gn.connect(verbIn);const f=filt('lowpass',2400,0.5,gn);
  for(const d of[-0.012,-0.006,0,0.006,0.012])osc('sawtooth',mf(m)*(1+d),t,dur+0.15,f);osc('sawtooth',mf(m-12),t,dur+0.15,f);
  gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(v*0.32,t+0.01);gn.gain.setValueAtTime(v*0.28,t+dur);gn.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.15);}
-function gtr(t,m,dur,v,out){// overdriven lead guitar with a slow vibrato
- const gn=gainTo(distIn);const f=filt('lowpass',2400,1,gn);const o=osc('sawtooth',mf(m),t,dur+0.1,f);vib(o,t,5.5,25,0.15);const o2=osc('square',mf(m)*1.003,t,dur+0.1,f);vib(o2,t,5.5,25,0.15);
- gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(v*0.9,t+0.006);gn.gain.setValueAtTime(v*0.8,t+dur);gn.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.1);}
+function gtr(t,m,dur,v,out){// lead guitar through a cranked amp: two detuned saws and a pick scrape driven into hard clipping, then a speaker cabinet
+ // short notes are cut like rhythm playing (palm-muted, dark, stopped dead by the fretting hand);
+ // held notes are picked a hair sharp, settle, lose energy like a string, bloom into vibrato, and ring on after the hand lets go
+ const short=gtrMode!=='legato'&&dur<=STEP*2.1,quick=!short&&dur<=STEP*2.1;// quick: a short note inside a connected line
+ const pre=A.createGain();pre.gain.value=GTR_DRIVE;const ws=A.createWaveShaper();ws.curve=gtrCurve;ws.oversample='4x';pre.connect(ws);
+ const gn=gainTo(gtrCab);ws.connect(gn);const f=filt('lowpass',short?1700:3200,0.7,pre);
+ const ring=short?0.03:quick?0.12:0.4,end=dur+ring;
+ for(const[ty,d]of[['sawtooth',1],['sawtooth',1.006],['square',0.5]]){const o=osc(ty,mf(m)*d,t,end,f);
+  if(quick){o.detune.setValueAtTime(-10,t);o.detune.linearRampToValueAtTime(0,t+0.02);}
+  else if(!short){o.detune.setValueAtTime(-28,t);o.detune.linearRampToValueAtTime(0,t+0.045);vib(o,t,5.2,32,0.22);}}
+ const ng=gainTo(pre),nf=filt('bandpass',short?3400:2600,1.2,ng);noise(t,0.03,nf);env(ng,t,0.001,short?0.9:0.5,short?0.018:0.025);
+ const V=v*GTR_V;gn.gain.setValueAtTime(0.0001,t);gn.gain.exponentialRampToValueAtTime(V,t+(short?0.002:0.004));
+ if(short){gn.gain.exponentialRampToValueAtTime(V*0.4,t+dur);gn.gain.exponentialRampToValueAtTime(0.0001,t+dur+ring);
+  const mg=gainTo(pre),mf2=filt('bandpass',1200,1.5,mg);noise(t+dur,0.015,mf2);env(mg,t+dur,0.001,0.25,0.012);}// the mute's click
+ else{gn.gain.exponentialRampToValueAtTime(V*(quick?0.85:0.7),t+dur);gn.gain.exponentialRampToValueAtTime(V*0.2,t+dur+0.06);gn.gain.exponentialRampToValueAtTime(0.0001,t+end);
+  const rv=gainTo(verbIn);rv.gain.value=0.35;gn.connect(rv);}}
 function power(t,root,dur,v){// power chord: root, fifth, octave, through the drive
  const gn=gainTo(distIn);const f=filt('lowpass',1700,1,gn);for(const iv of[0,7,12]){osc('sawtooth',mf(root+iv),t,dur,f);osc('sawtooth',mf(root+iv)*1.004,t,dur,f);}env(gn,t,0.003,v,dur);}
 function lofi(t,m,dur,v,out=musicBus){// a worn electric piano on old tape: soft, a little out of tune
@@ -171,33 +197,48 @@ let slashN=0;
 function swish(t,f0,f1,dur,v,q,atk){const ng=gainTo(sfxBus),nf=filt('bandpass',f0,q||1.4,ng);nf.frequency.setValueAtTime(f0,t);nf.frequency.exponentialRampToValueAtTime(f1,t+dur);noise(t,dur+0.02,nf);
  ng.gain.setValueAtTime(0.0001,t);ng.gain.exponentialRampToValueAtTime(v,t+(atk||dur*0.35));ng.gain.exponentialRampToValueAtTime(0.0001,t+dur);}
 function thump(t,f0,v,dur){const gn=gainTo(sfxBus);const o=osc('sine',f0,t,dur,gn);o.frequency.exponentialRampToValueAtTime(f0*0.45,t+dur);env(gn,t,0.002,v,dur);}
-function sfxCut(mo,perfect,big){const t=A.currentTime,v=perfect?1:0.75;
- // a finisher hits hardest right on the cut: short, loud at once, no slow swell that would sound late
- if(big){const a=0.004;
-  if(mo==='spin'){swish(t,3200,900,0.05,0.22*v,1.2,a);swish(t+0.03,3400,800,0.05,0.2*v,1.2,a);}
-  else if(mo==='cross'){swish(t,3400,900,0.05,0.22*v,1.2,a);swish(t+0.03,900,3400,0.05,0.2*v,1.2,a);}
-  else swish(t,3000,800,0.06,0.24*v,1,a);
-  thump(t,120,0.3*v,0.12);
-  {const ng=gainTo(sfxBus),nf=filt('bandpass',900,1.2,ng);noise(t+0.004,0.04,nf);env(ng,t+0.004,0.001,0.24*v,0.035);}
-  {const ng=gainTo(sfxBus),nf=filt('lowpass',1200,0,ng);noise(t,0.07,nf);env(ng,t,0.002,0.14,0.06);}
-  return;}
- if(mo==='cutUp'||mo==='rise'||mo==='jumpCut')swish(t,900,3400,0.09,0.2*v);
- else if(mo==='thrust'){swish(t,2400,1600,0.05,0.2*v,0.8);thump(t,170,0.16*v,0.06);}
- else if(mo==='spin'){swish(t,3000,900,0.07,0.18*v);swish(t+0.06,3200,800,0.09,0.2*v);}
- else if(mo==='cross'){swish(t,3200,900,0.06,0.2*v);swish(t+0.05,900,3200,0.07,0.2*v);}
- else if(mo==='sweep'||mo==='slideCut'){swish(t,2600,700,0.13,0.2*v,1);}
- else if(mo==='pierce'){swish(t,1800,2800,0.1,0.18*v);}
- else swish(t,3400,800,0.08,0.2*v);
- thump(t+0.01,150,0.13*v,0.07);
- // the drone's shell giving way: a dry crunch right after the blade passes
- {const ng=gainTo(sfxBus),nf=filt('bandpass',1300,1.2,ng);noise(t+0.015,0.05,nf);env(ng,t+0.015,0.001,0.16*v,0.045);}
+// The blade: layered bands of soft noise sweeping up and back down, open and bright on top, with no pitch.
+// The register moves the whole sweep (low / mid / high); the finisher is the brightest. Every layer peaks at once, so the cut never sounds late.
+let softNoise=null;
+function bladeNoise(){if(!softNoise){const n=Math.ceil(A.sampleRate*0.6);softNoise=A.createBuffer(1,n,A.sampleRate);const d=softNoise.getChannelData(0);let p=0;
+ for(let i=0;i<n;i++){const w=Math.random()*2-1;p=0.7*p+0.3*w;d[i]=p*0.86+w*0.14;}}return softNoise;}
+function bladeLayer(t,d,o,v){const s=A.createBufferSource();s.buffer=bladeNoise();
+ const hp=A.createBiquadFilter();hp.type='highpass';hp.frequency.setValueAtTime(o.hp,t);hp.frequency.exponentialRampToValueAtTime(o.hp2,t+d*0.72);
+ const bp=A.createBiquadFilter();bp.type='bandpass';bp.Q.value=o.q;bp.frequency.setValueAtTime(o.f0,t);bp.frequency.exponentialRampToValueAtTime(o.f1,t+d*0.42);bp.frequency.exponentialRampToValueAtTime(o.f2,t+d*0.9);
+ const g=gainTo(sfxBus);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(o.peak*v,t+0.006);g.gain.setValueAtTime(o.peak*v*0.9,t+d*0.28);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+ s.connect(hp);hp.connect(bp);bp.connect(g);s.start(t,Math.random()*0.2);s.stop(t+d+0.02);}
+function blade(t,reg,v,big){const k=reg==='low'?0.66:reg==='high'?1.32:1,br=big||reg==='high',d=big?0.3:0.22;
+ bladeLayer(t,d,{hp:360*k,hp2:820*k,f0:650*k,f1:1350*k,f2:480*k,q:0.5,peak:0.16},v);
+ bladeLayer(t+0.006,d*0.85,{hp:1050*k,hp2:1900*k,f0:1450*k,f1:(br?3300:2900)*k,f2:1200*k,q:0.72,peak:br?0.17:0.145},v);
+ bladeLayer(t+0.012,d*0.62,{hp:(br?2800:2400)*k,hp2:3500*k,f0:3000*k,f1:Math.min(7000,(br?5600:4900)*k),f2:2300*k,q:0.7,peak:br?0.085:0.065},v);
+ bladeLayer(t+0.016,d*0.5,{hp:3900*k,hp2:3300*k,f0:4100*k,f1:Math.min(7500,(br?6500:5700)*k),f2:3000*k,q:0.55,peak:br?0.055:0.04},v);}
+function sfxCut(mo,perfect,big,reg){const t=A.currentTime,v=perfect?1:0.75;reg=reg||'mid';
+ // two-stroke moves draw the blade twice
+ blade(t,reg,v,big);if(mo==='spin'||mo==='cross')blade(t+(big?0.03:0.05),reg,v*0.8,big);
+ // the drone's shell giving way under the blade, kept low so the blade stays in front
+ thump(t+0.01,big?120:150,(big?0.22:0.1)*(perfect?1:0.75),big?0.1:0.06);
+ {const ng=gainTo(sfxBus),nf=filt('bandpass',big?900:1300,1.2,ng);noise(t+0.012,0.04,nf);env(ng,t+0.012,0.001,(big?0.14:0.08)*(perfect?1:0.75),0.035);}
 }
 function sfxWhoosh(up){const t=A.currentTime;const ng=gainTo(sfxBus),nf=filt('bandpass',up?900:600,1.5,ng);nf.frequency.setValueAtTime(up?600:1200,t);nf.frequency.exponentialRampToValueAtTime(up?1600:350,t+0.18);noise(t,0.22,nf);env(ng,t,0.01,0.12,0.18);}
 function sfxSwing(){const t=A.currentTime;const ng=gainTo(sfxBus),nf=filt('bandpass',1500,0,ng);noise(t,0.07,nf);env(ng,t,0.002,0.04,0.06);}
 function sfxMiss(){const t=A.currentTime;const gn=gainTo(sfxBus);const o=osc('sine',110,t,0.25,gn);o.frequency.exponentialRampToValueAtTime(48,t+0.2);env(gn,t,0.003,0.35,0.22);
  const ng=gainTo(sfxBus),nf=filt('lowpass',600,0,ng);noise(t,0.2,nf);env(ng,t,0.002,0.2,0.18);
  lp.frequency.cancelScheduledValues(t);lp.frequency.setTargetAtTime(260,t,0.02);}
-function sfxRelease(good){const t=A.currentTime;impact(t,good?0.9:0.5);if(good){const c=CH[0];for(const m of[...c.pad,c.pad[0]+12,c.pad[2]+12])piano(t,m,2,0.1,sfxBus);}}
+// holding the key: the stored color hums through the lock, rising an octave over the bar and pulsing in 8ths
+function sfxCharge(t0,t1){const root=CH[0].root,g=gainTo(sfxBus),lp=A.createBiquadFilter();lp.type='lowpass';lp.Q.value=3;
+ lp.frequency.setValueAtTime(320,t0);lp.frequency.exponentialRampToValueAtTime(2000,t1);
+ const am=A.createGain();am.gain.value=0.65;am.connect(lp);lp.connect(g);
+ const lfo=A.createOscillator(),ld=A.createGain();lfo.type='square';lfo.frequency.value=2/B;ld.gain.value=0.35;lfo.connect(ld);ld.connect(am.gain);lfo.start(t0);lfo.stop(t1+0.6);
+ const os=[0,7,12].map(d=>{const o=A.createOscillator();o.type=d===7?'triangle':'sawtooth';o.frequency.value=mf(root-24+d);o.detune.setValueAtTime(0,t0);o.detune.linearRampToValueAtTime(1200,t1);o.connect(am);o.start(t0);o.stop(t1+0.6);return o;});
+ g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.08,t0+0.05);g.gain.exponentialRampToValueAtTime(0.18,t1);
+ thump(t0,110,0.14,0.05);
+ return (ok,at)=>{const t=Math.max(A.currentTime,at||0);g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(Math.max(0.0001,g.gain.value),t);g.gain.exponentialRampToValueAtTime(0.0001,t+(ok?0.04:0.25));
+  if(!ok)os.forEach(o=>{o.detune.cancelScheduledValues(t);o.detune.setValueAtTime(o.detune.value,t);o.detune.linearRampToValueAtTime(o.detune.value-1200,t+0.25);});
+  os.forEach(o=>o.stop(t+0.3));lfo.stop(t+0.3);};}
+// forcing the lock: every tap is a short cut that climbs from low to high as the lock gives
+function sfxMash(p){const t=A.currentTime;blade(t,p<0.34?'low':p<0.67?'mid':'high',0.7,false);thump(t,140+80*p,0.08,0.04);
+ if(p>=1){const ng=gainTo(sfxBus),nf=filt('bandpass',1600,2,ng);noise(t+0.02,0.06,nf);env(ng,t+0.02,0.002,0.18,0.06);thump(t+0.02,90,0.2,0.08);}}
+function sfxRelease(good,at){const t=Math.max(A.currentTime,at||0);impact(t,good?0.9:0.5);if(good){const c=CH[0];for(const m of[...c.pad,c.pad[0]+12,c.pad[2]+12])piano(t,m,2,0.1,sfxBus);}}
 
 // ---- arrangement ----
 function drumHit(p,st){return p[st]==='x';}
@@ -272,7 +313,16 @@ function playStep(s,t0){
   if(turn&&st===8)pad(t,ch.pad,BAR/2,0.04+0.08*S,SONG.pad==='gate');
   if(SONG.arp&&S>0.25){const tones=ch.pad.map(m=>m+12);arp(t,tones[[0,1,2,1][st%4]]+(st>=8&&S>0.7?12:0),0.045*S);}
   if(S>0.2)bandKeys(st,t,ch,S,bar);
-  if(S>0.15){const mel=(k===1&&bar%4===3&&rel===len-1)?MEL_END:MEL[bar%4];for(const[ms,m,l]of mel)if(onStep(ms,st)){const tt=atStep(ms,t),pv=phraseV(mel,ms,bar),g=gateOf(l);lead(tt,m,l*STEP*g,0.2*Math.pow(S,0.7)*pv);if(k===1&&S>0.6)lead(tt,m-12,l*STEP*g,0.08*S*pv);}}
+  if(S>0.15){const melOf=(br,rl)=>(k===1&&br%4===3&&rl===len-1)?MEL_END:MEL[br%4],mel=melOf(bar,rel);
+   const ku=keyupOn()&&k===1;// no tie across the last chorus's key change
+   const prevM=rel>0&&!(ku&&rel===4)?melOf(bar-1,rel-1):null,nextM=rel<len-1&&!(ku&&rel===3)?melOf(bar+1,rel+1):null;
+   for(let i=0;i<mel.length;i++){const[ms,m,l]=mel[i];if(!onStep(ms,st))continue;let L=l;
+    // the guitar plays the chorus as one connected line on the strings: the same note again right after (across the bar line) is held, not picked twice
+    if(SONG.lead==='gtr'){const pv0=i>0?[mel[i-1][0],mel[i-1][1],mel[i-1][2]]:prevM&&prevM.length?[prevM[prevM.length-1][0]-16,...prevM[prevM.length-1].slice(1,3)]:null;
+     if(pv0&&pv0[1]===m&&pv0[0]+pv0[2]===ms)continue;
+     const nx=i+1<mel.length?mel[i+1]:nextM&&nextM.length?[nextM[0][0]+16,nextM[0][1],nextM[0][2]]:null;if(nx&&nx[1]===m&&nx[0]===ms+l)L=l+nx[2];}
+    const tt=atStep(ms,t),pv=phraseV(mel,ms,bar),g=gateOf(L);gtrMode='legato';const gg=SONG.lead==='gtr'?1:g;
+    lead(tt,m,L*STEP*gg,0.2*Math.pow(S,0.7)*pv);if(k===1&&S>0.6)lead(tt,m-12,L*STEP*gg,0.08*S*pv);gtrMode=null;}}
  }else if(type==='break'){
   const S=Math.max(0.35,districtSat[0]);
   if(st===0){pad(t,ch.pad,BAR,0.07);bass(t,ch.root,BAR*0.95,0.2);}
@@ -377,7 +427,7 @@ function endingStep(rel,st,t){
   if(rel===2&&st===0){const top=homeTop();landHit(t,S,CH[0].pad,CH[0].root,top,BAR*2);introMotif(0,t+STEP*2,CH[0],S);}return;}
  if(en==='fade'){// the band keeps running into the distance
   const c=CH[rel%4];fullBand(st,t,c.root,c.pad,S);melLine(absMel(MEL[rel%4]),st,t,0,melV,S);
-  if(rel===1&&st===8){master.gain.cancelScheduledValues(t);master.gain.setTargetAtTime(0.0001,t,BAR*0.9);}return;}
+  if(rel===0&&st===0){master.gain.cancelScheduledValues(t);master.gain.setTargetAtTime(0.0001,t,BAR*0.72);}return;}// gone by the time the song's last bar ends
  if(en==='cut'){// the last line, a fill, and one clean hit on the downbeat
   const c=rel===0?CH[2]:CH[3];
   if(rel<=1){fullBand(st,t,c.root,c.pad,S);if(rel===1)fill();melLine(absMel(rel===0?MEL[2]:MEL_END),st,t,0,melV,S);return;}
@@ -404,7 +454,7 @@ function endingStep(rel,st,t){
   if(rel<=1){fullBand(st,t,c.root,c.pad,S);if(rel===1)fill();melLine(absMel(rel===0?MEL[1]:MEL_END),st,t,0,melV,S);return;}
   if(rel===2){if(st===0){power(t,H.root+12,BAR*1.1,0.2);bass(t,H.root,BAR,0.3);kick(t,1);cymbal(t,0.06);lead(t,top,BAR,melV);}
    if(st>=2){const tom2=[190,160,130];if(st%2===0)tom(t,tom2[(st/2)%3],0.18+0.012*st);else snare(t,0.1+0.01*st);if(st===8)cymbal(t,0.05);}return;}
-  if(rel===3&&st===0){landHit(t,S,H.pad,H.root,top,STEP*4);power(t,H.root+12,STEP*4,0.22);}return;}
+  if(rel===3&&st===0){landHit(t,S,H.pad,H.root,top,BAR*1.5);power(t,H.root+12,BAR*1.5,0.22);}return;}// the last chord rings out, as a band would let it
  if(en==='tapestop'){// hip hop: the beat lands, then the record is stopped by hand
   const c=rel===0?CH[0]:CH[3];
   if(rel<=1){fullBand(st,t,c.root,c.pad,S);melLine(absMel(rel===0?MEL[0]:MEL_END),st,t,0,melV,S);return;}

@@ -4,14 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>彩鍵 試作</title>
+<link rel="stylesheet" href="../common/system.css">
+<script src="../common/system.js" data-frame="#wrap" data-right="#pauseBtn" data-loading></script>
+<script src="../common/splash.js"></script>
+<script src="../common/sound.js" data-bgm="-4" data-sfx="0" data-button></script>
+<script src="../common/share.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<link id="webfonts" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#050507;--fg:#e6e6ea;--dim:#8a8c93;--cyan:#39f0ff;--pink:#ff3d8b}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:'DotGothic16',monospace}
-#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+html,body{margin:0;height:100%;overscroll-behavior:none;background:var(--bg);color:var(--fg);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:'DotGothic16',monospace}
+#wrap{position:fixed;inset:var(--mg-bar-h,0px) 0 0 0;display:flex;align-items:center;justify-content:center}
 #cv{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
-.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:16px;box-sizing:border-box}
+.ov{position:fixed;inset:var(--mg-bar-h,0px) 0 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:16px;box-sizing:border-box}
 .ov.hide{display:none}
 #title{background:linear-gradient(#000c,#000a)}
 .logo{font-size:56px;letter-spacing:.12em;line-height:1;color:#f2f2f4;text-shadow:3px 0 0 var(--pink),-3px 0 0 var(--cyan)}
@@ -25,7 +30,10 @@ button:active{transform:translate(1px,1px)}
 button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;border:1px solid #555;box-shadow:none}
 .hide{display:none!important}
 #cal{background:#000e}
-#select{background:#000e;justify-content:flex-start;padding-top:48px;overflow-y:auto}
+#calHit{min-height:3.2em}
+#calHit small{display:block;font-size:12px;color:var(--dim);margin-top:4px}
+#calVal{font-size:48px}
+#select{background:#000e;overscroll-behavior:contain;justify-content:flex-start;padding-top:48px;overflow-y:auto}
 #songList{display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px}
 .song{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid #333;background:#0b0b0e;cursor:pointer;color:var(--fg)}
 .song:active{transform:translate(1px,1px)}
@@ -35,6 +43,16 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 .ssub{font-size:11px;color:var(--dim);margin-top:2px}
 .smeta{font-size:11px;color:var(--dim);text-align:right;white-space:nowrap;line-height:1.6}
 .smeta b{font-weight:normal;color:#fff}
+.smeta .hard{color:var(--pink)}
+.smeta .normal{color:var(--cyan)}
+.smeta .clr{color:var(--cyan)}
+.smeta .perf{color:#fff;text-shadow:0 0 6px var(--cyan),0 0 10px var(--pink)}
+.song.locked{cursor:default;opacity:.45}
+.song.locked .sw{filter:grayscale(1)}
+#diffTabs{display:flex;width:100%;max-width:340px}
+#diffTabs button{flex:1;font-size:16px;padding:8px 0;background:transparent;color:var(--dim);border:0;border-bottom:2px solid #333;box-shadow:none}
+#diffTabs button.on{color:#fff;border-bottom-color:var(--cyan)}
+#diffTabs button.on[data-d=hard]{border-bottom-color:var(--pink)}
 #endBox{width:100%;max-width:340px;margin-top:14px;border-top:1px solid #333;padding-top:10px}
 .elbl{font-size:12px;color:var(--dim);margin-bottom:6px}
 #endList{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
@@ -44,6 +62,14 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 #result{background:#000b}
 .big{font-size:64px;line-height:1;color:#fff}
 .big small{font-size:22px}
+.slbl{font-size:12px;color:var(--dim);letter-spacing:.3em;margin-bottom:-14px}
+.combo{font-size:18px;color:#e9e9ee}
+.combo b{font-size:26px;font-weight:normal}
+.combo .fc{display:block;font-size:30px;color:#fff;text-shadow:0 0 8px #39f0ff,0 0 16px #ff3d8b;letter-spacing:.08em;animation:fcPop .5s cubic-bezier(.2,1.6,.4,1) both}
+.combo .fc.clr{text-shadow:0 0 8px #39f0ff}
+.combo .nclr{display:block;font-size:14px;color:var(--dim);margin-bottom:4px}
+.combo .unl{display:block;font-size:14px;color:var(--cyan);margin-top:6px}
+@keyframes fcPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .lbl{font-size:13px;color:var(--dim);letter-spacing:.3em}
 .cmt{font-size:16px;color:#e9e9ee}
 .det{font-size:13px;color:var(--dim);line-height:1.8}
@@ -57,7 +83,7 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 #edBack{left:8px;top:8px;font-size:13px;padding:5px 12px;box-shadow:none;background:#000c;color:#e6e6ea;border:1px solid #555}
 #editor{background:#050507;padding:0;gap:0;justify-content:flex-start}
 #edHead{width:100%;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;box-sizing:border-box;font-size:14px}
-#edCv{flex:1;width:100%;min-height:0;touch-action:none;display:block}
+#edCv{flex:0 1 380px;width:100%;min-height:0;touch-action:none;display:block}
 #edInfo{font-size:11px;color:#ff7070;min-height:14px;padding:2px 8px}
 #edBar{width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:6px 8px 12px;box-sizing:border-box;border-top:1px solid #222}
 #edBar button.sub{font-size:13px;padding:5px 10px}
@@ -65,39 +91,54 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 #songIO{background:#000e;gap:10px;padding:16px;box-sizing:border-box}
 #sgText{width:100%;max-width:360px;height:50%;font-size:11px;background:#111;color:#ddd;border:1px solid #444;-webkit-user-select:text;user-select:text}
 #loading{background:#000;z-index:20}
+#pauseMenu{background:#000c;z-index:8}
+#tut{position:fixed;inset:var(--mg-bar-h,0px) 0 0 0;z-index:7;pointer-events:none}
+#tut button{pointer-events:auto}
+.tutCard{position:absolute;left:16px;right:16px;top:10px;max-width:360px;margin:0 auto;background:#000b;border:1px solid #333;padding:10px 14px 12px;text-align:center}
+.tutCard h2{font-size:19px;font-weight:normal;margin:8px 0 4px;color:#fff}
+.tutCard p{font-size:13px;line-height:1.7;color:#cfd0d4;margin:0}
+.tutCard #tutSkip{position:absolute;right:6px;top:6px;font-size:11px;padding:3px 9px}
+.tutDots{display:flex;gap:5px;justify-content:center}
+.tutDots i{width:6px;height:6px;background:#444}.tutDots i.on{background:var(--cyan)}
+.tutBtns{position:absolute;left:0;right:0;bottom:20px;display:flex;gap:12px;justify-content:center}
+#thumb{position:absolute;left:50%;bottom:88px;width:34px;margin-left:-17px;transform-origin:50% 100%}
+#thumb{transition:transform .12s}#thumb.press{transform:scale(.88) translateY(4px)}
+#freeze{background:#0008;z-index:8}
 #edText{width:100%;max-width:360px;height:40%;font-size:11px;background:#111;color:#ddd;border:1px solid #444;-webkit-user-select:text;user-select:text}
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="cv"></canvas></div>
+<template id="splash">
+  <section data-sec="3"><p>音を出して遊ぶのがおすすめです<small>ワイヤレスイヤホンは音が遅れることがあります。<br>タイミング調整で合わせられます</small></p></section>
+</template>
 <div id="title" class="ov">
-  <div class="tag">試作 ver0.6.0</div>
+  <div class="tag">試作 ver0.8.4</div>
   <div class="logo">彩鍵</div>
   <div class="ruby">いろかぎ</div>
   <div class="how">
     色を買い占められた灰色の街。<br>
-    敵が抱えた色を奪い返して、<br>サビで街へ解き放て。<br><br>
-    <b>タップ</b>　同じ高さの敵を斬る<br>
-    <b>上下フリック</b>　段を飛び移って斬る<br>
-    <b>上の段で上へ</b>　ジャンプ斬り<br>
-    <b>下の段で下へ</b>　スライディング<br>
-    <i>光の帯</i>　押したまま、サビの頭で離す<br>
-    <span style="color:var(--dim)">指は画面の下のほうで</span>
+    敵が抱えた色を奪い返して、<br>サビで街へ解き放て。
   </div>
   <button id="startBtn">あそぶ</button>
+  <button id="howBtn" class="sub">あそびかた</button>
   <button id="calBtn" class="sub">タイミング調整</button>
   <div class="det" id="latInfo">音を出して遊んでください</div>
 </div>
 <div id="cal" class="ov hide">
-  <div class="lbl">タイミング調整</div>
-  <div class="how" id="calMsg">画面は見ずに、聞こえた音に合わせて<br>8回タップしてください。<br>ワイヤレスイヤホンのときに使います。</div>
+  <div class="lbl" id="calLbl">タイミング調整</div>
   <div class="big" id="calVal"></div>
-  <button id="calGo">はじめる</button>
-  <button id="calOk" class="hide">決定</button>
+  <div class="det" id="calSub"></div>
+  <div class="how" id="calMsg"></div>
+  <div class="cmt" id="calHit"></div>
+  <div class="lsBtns"><button id="calMinus" class="sub">−10ms</button><button id="calPlus" class="sub">＋10ms</button></div>
+  <button id="calGo">測る</button>
+  <button id="calReset" class="sub">リセット</button>
   <button id="calBack" class="sub">もどる</button>
 </div>
 <div id="select" class="ov hide">
   <div class="lbl">街区をえらぶ</div>
+  <div id="diffTabs"><button type="button" data-d="normal">ノーマル</button><button type="button" data-d="hard">ハード</button></div>
   <div id="songList"></div>
   <div id="endBox"><div class="elbl">締め方の聴き比べ（試作用）</div><div id="endList"></div><div id="fromLast" class="endOpt">ラスサビから始める</div></div>
   <div id="toolBox"><div class="elbl">街区をタップしたとき（試作用）</div><div class="endRow" id="toolRow"></div></div>
@@ -106,7 +147,7 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 <div id="listen" class="tool hide">
   <div class="lsTop"><span id="lsName"></span><span id="lsBar"></span></div>
   <input type="range" id="lsSeek" min="0" max="43" step="1" value="0">
-  <div class="lsBtns"><button id="lsPause">一時停止</button><button id="lsEd" class="sub hide">エディタへ</button><button id="lsBack" class="sub">もどる</button></div>
+  <div class="lsBtns"><button id="lsPause">一時停止</button><button id="lsRec" class="sub">音声で保存</button><button id="lsEd" class="sub hide">エディタへ</button><button id="lsBack" class="sub">もどる</button></div>
 </div>
 <button id="edBack" class="tool hide">■ エディタへ</button>
 <div id="songIO" class="ov hide">
@@ -127,14 +168,31 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
   <div id="edIO" class="hide"><div class="det" id="edIOMsg"></div><textarea id="edText"></textarea><div class="lsBtns"><button id="edLoad">読み込む</button><button id="edIOClose" class="sub">閉じる</button></div></div>
 </div>
 <div id="result" class="ov hide">
-  <div class="lbl" id="rLbl">街の彩度</div>
-  <div class="big" id="rSat">0<small>%</small></div>
-  <div class="cmt" id="rCmt"></div>
+  <div class="lbl" id="rLbl"></div>
+  <div class="slbl">スコア</div>
+  <div class="big" id="rSat">0</div>
+  <div class="combo" id="rCombo"></div>
   <div class="det" id="rDet"></div>
+  <div class="cmt" id="rCmt"></div>
   <button id="againBtn">もう一度</button>
+  <button id="shareBtn" class="sub">シェアする</button>
   <button id="toSelBtn" class="sub">街区をえらぶ</button>
   <button id="toEdBtn" class="sub hide">エディタへ</button>
 </div>
+<button id="pauseBtn" type="button" class="hide" aria-label="一時停止"><svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg></button>
+<div id="pauseMenu" class="ov hide">
+  <div class="lbl">一時停止</div>
+  <button id="psGo">つづける</button>
+  <button id="psAgain" class="sub">はじめから</button>
+  <button id="psSel" class="sub">街区をえらぶ</button>
+  <div class="det">つづけると、その小節の頭から始まります</div>
+</div>
+<div id="tut" class="hide">
+  <div class="tutCard"><div class="tutDots" id="tutDots"></div><h2 id="tutH"></h2><p id="tutP"></p><button id="tutSkip" class="sub">とばす</button></div>
+  <svg id="thumb" viewBox="0 0 40 64"><path d="M8 64V22a12 12 0 0 1 24 0v42z" fill="#e6e6ea" fill-opacity=".85"/><rect x="13" y="12" width="14" height="13" rx="6" fill="#050507" fill-opacity=".25"/></svg>
+  <div class="tutBtns"><button id="tutPrev" class="sub">もどる</button><button id="tutNext">つぎへ</button></div>
+</div>
+<div id="freeze" class="ov hide"><div class="cmt">ふれると再開</div></div>
 <div id="loading" class="ov"><div class="det" id="loadMsg">読み込み中…</div><button id="reloadBtn" class="hide">読み込み直す</button></div>
 <script src="js/data.js"></script>
 </body>

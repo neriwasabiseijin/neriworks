@@ -5,7 +5,7 @@ const W=135,H=300;
 const cv=document.getElementById('cv'),g=cv.getContext('2d');
 cv.width=W;cv.height=H;
 const refl=document.createElement('canvas');refl.width=W;refl.height=H;const rg=refl.getContext('2d');
-function fit(){const s=Math.min(innerWidth/W,innerHeight/H);cv.style.width=Math.floor(W*s)+'px';cv.style.height=Math.floor(H*s)+'px';}
+function fit(){const wr=document.getElementById('wrap'),s=Math.min(wr.clientWidth/W,wr.clientHeight/H);cv.style.width=Math.floor(W*s)+'px';cv.style.height=Math.floor(H*s)+'px';}
 addEventListener('resize',fit);fit();
 
 // ---------- song structure ----------
@@ -20,12 +20,13 @@ let CH=[],MEL=[],MEL_END=[];
 // how the last chorus lands (being compared): hits / tag / tame / rit / keyup
 // auto = each song's own ending (songs.js). The comparison menu can force one.
 let ENDING='auto',KEYUP='auto',FROM_LAST=false;
-try{ENDING=localStorage.getItem('iro-ending2')||'auto';KEYUP=localStorage.getItem('iro-keyup')||'auto';}catch(e){}
+if(DEV)try{ENDING=localStorage.getItem('iro-ending2')||'auto';KEYUP=localStorage.getItem('iro-keyup')||'auto';}catch(e){}
 // prototype tools: 'play' is the game, 'listen' is the BGM preview (the hero plays by itself, no cut sounds)
 let MODE='play';
+const VERSION='1.0.0';
 // past this much output delay (Bluetooth) a cut sound arrives too late to feel like the cut, so cuts stay silent
 const CUT_LAG_MAX=0.1;
-const cutSounds=()=>MODE==='play'&&lat<=CUT_LAG_MAX;
+const cutSounds=()=>(MODE==='play'||MODE==='demo')&&lat<=CUT_LAG_MAX;
 const endingOf=()=>ENDING==='auto'?SONG.ending:ENDING;
 const keyupOn=()=>KEYUP==='auto'?!!SONG.keyup:KEYUP==='on';
 function stepT(s){return s*STEP;}
@@ -83,17 +84,19 @@ const KEY=sprite(['..kkkkk..','.kwwwwwk.','kwwkkkwwk','kwk...kwk','kwwkkkwwk','.
 let notes=[],holds=[],ni=0,running=false,ended=false,songStart=0,nextStep=0;
 let buildStock=[0,0],buildMax=[1,1],districtSat=[0,0],released=[false,false];
 let score=0,combo=0,maxCombo=0,nPerf=0,nGood=0,nMiss=0;
-let kickT=-9,lane=1,laneFrom=1,laneT=-9,holding=null,shakeT=-9,swingT=-9,fx=[],dashUntil=-9,jumpT=-9,slideT=-9,jumpReach=false,slideReach=false;// one move cuts one enemy: its reach ends at the first hit
+let kickT=-1e9,lane=1,laneFrom=1,laneT=-9,holding=null,shakeT=-1e9,swingT=-9,fx=[],dashUntil=-9,jumpT=-9,slideT=-9,jumpReach=false,slideReach=false;// one move cuts one enemy: its reach ends at the first hit; kick/shake start far in the past, since now() is -9 until audio starts
 let userLat=null;try{const v=localStorage.getItem('iro-lat');if(v!=null)userLat=parseFloat(v);}catch(e){}
-let buildings=[],bEnd=0,parts=[],rings=[],worldSat=0,held=[],kime=null;
+let quietT=null,buildings=[],bEnd=0,parts=[],rings=[],worldSat=0,held=[],kime=null;
 const HERO_X=26,LANE_Y=[112,178],ROAD_END=196,MID_Y=(LANE_Y[0]+LANE_Y[1])/2-8,WIN_P=0.07,WIN_G=0.14,MOVE=0.3;
-const now=()=>A?A.currentTime-songStart-lat:-9;
+let pausedAt=null;// while paused the song's clock stands still
+const now=()=>pausedAt!==null?pausedAt:A?A.currentTime-songStart-lat:-9;
 const curBar=()=>Math.max(0,Math.floor(now()/BAR));
 const ratio=k=>Math.min(1,buildStock[k]/buildMax[k]);
 const noteY=n=>n.kind==='high'?LANE_Y[0]-42:n.kind==='low'?LANE_Y[1]-8:n.kind==='mid'?MID_Y-5:LANE_Y[n.lane]-18;
 
 // where a beat of a bar falls in time, with the song's swing (16th swing, or swung eighths for jazz)
 function beatT(bar,b){const step=b*4;let t=bar*BAR+b*B;if(Math.abs(step-Math.round(step))<1e-6){const s=Math.round(step);if(s%2===1)t+=SONG.swing*STEP;if(SONG.swing8&&s%4===2)t+=SONG.swing8*STEP;}return t;}
+const MASH_N=8,HOLD_W=4;// taps that force a lock; a key or a lock carries as much color as four drones
 const MIN_GAP=0.12;// two cuts closer than this are not playable; the second one is left to the music
 // which steps of the last bars get a cut, per ending (a line of the melody, or plain steps)
 function outroLine(en,rel){const on=a=>a&&a.map(x=>Array.isArray(x)?x[0]:x);
@@ -162,12 +165,14 @@ function assignCombos(out){
  const taps=out.filter(n=>!n.hold);const runs=[];let cur=[];
  for(const n of taps){if(cur.length&&n.t-cur[cur.length-1].t>B*1.01){runs.push(cur);cur=[];}cur.push(n);}
  if(cur.length)runs.push(cur);
+ // the blade's register climbs through a combo and tops out on the finisher (三連撃: 中・低・高)
+ const REG={1:['mid'],2:['mid','low'],3:['mid','low','high'],4:['mid','low','mid','high'],5:['mid','low','mid','low','high']};
  const COMBO={1:['cutDown'],2:['cutDown','cutUp'],3:['cutDown','cutUp','sweep'],4:['cutDown','cutUp','thrust','spin'],5:['cutUp','cutDown','thrust','rise','cross']};
  // a run longer than five is played as two or three of those combos back to back
  const split=L=>{if(L<=5)return[L];let c=Math.ceil(L/5);const out=[];for(let i=0;i<c;i++)out.push(Math.floor(L/c)+(i<L%c?1:0));return out;};
  for(const run of runs){let i0=0;
   for(const L of split(run.length)){const seq=COMBO[L];
-   run.slice(i0,i0+L).forEach((n,i)=>{n.mo=n.kind==='high'?'jumpCut':n.kind==='low'?'slideCut':n.kind==='mid'?'pierce':seq[i];n.fin=L>=3&&i===L-1;});
+   run.slice(i0,i0+L).forEach((n,i)=>{n.mo=n.kind==='high'?'jumpCut':n.kind==='low'?'slideCut':n.kind==='mid'?'pierce':seq[i];n.fin=L>=3&&i===L-1;n.reg=REG[L][i];});
    i0+=L;}}
  // the song's very last cut is always the closing pose, landing on the final chord
  const lastN=taps[taps.length-1];if(lastN){lastN.fin=true;lastN.pose=endingOf()!=='fade';}// fading out, the hero just keeps running
@@ -177,19 +182,24 @@ function assignCombos(out){
 // A chart can be edited by hand (tools.js) and is then played instead of a generated one.
 // Stored per song as {song, notes:[[bar, beat in bar, kind, lane, raw?]], holds:[[bar, lane]]}.
 // raw = a time not on the swing grid (the stop-time hits), kept exactly.
-const chartKey=id=>'iro-chart-'+id;
-function loadChart(id){try{const v=localStorage.getItem(chartKey(id));return v?JSON.parse(v):null;}catch(e){return null;}}
+// two difficulties, each with its own charts, records and unlocks (the select screen's tab picks one and is remembered)
+let DIFF='normal';try{if(localStorage.getItem('iro-diff')==='hard')DIFF='hard';}catch(e){}
+const DIFF_JA={normal:'ノーマル',hard:'ハード'};
+const dkey=id=>(DIFF==='normal'?'n-':'')+id;
+const starOf=sg=>sg[DIFF];
+const chartKey=id=>'iro-chart-'+dkey(id);
+function loadChart(id){if(!DEV)return null;try{const v=localStorage.getItem(chartKey(id));return v?JSON.parse(v):null;}catch(e){return null;}}
 function noteBeat(n){const bar=Math.floor((n.t+1e-6)/BAR);for(let i=0;i<48;i++){const b=i/12;if(Math.abs(beatT(bar,b)-n.t)<1e-5)return[bar,b,0];}
  return[bar,+((n.t-bar*BAR)/B).toFixed(4),1];}
 function chartData(all){return{song:SONG.id,notes:all.filter(n=>!n.hold).map(n=>{const[bar,b,raw]=noteBeat(n);return raw?[bar,b,n.kind,n.lane,1]:[bar,b,n.kind,n.lane];}),
- holds:all.filter(n=>n.hold).map(h=>[Math.round(h.t/BAR),h.lane])};}
+ holds:all.filter(n=>n.hold).map(h=>h.mash?[Math.round(h.t/BAR),h.lane,'mash']:[Math.round(h.t/BAR),h.lane])};}
 function chartFrom(d){const out=[];
  for(const[bar,b,kind,ln,raw]of d.notes){const si=secAt(bar),t=raw?bar*BAR+b*B:beatT(bar,b);
   const n={t,kind,lane:ln,k:KOF[si],sec:SECTIONS[si][0],c:Math.floor(hash(bar,Math.round(b*12),5)*4)};if(kind==='mid')n.from=1-ln;out.push(n);}
- for(const[bar,ln]of d.holds){const si=secAt(bar);out.push({t:bar*BAR,tEnd:(bar+1)*BAR,hold:true,k:KOF[si],sec:SECTIONS[si][0],lane:ln});}
+ for(const[bar,ln,kind]of d.holds){const si=secAt(bar);out.push({t:bar*BAR,tEnd:(bar+1)*BAR,hold:true,mash:kind==='mash',taps:0,k:KOF[si],sec:SECTIONS[si][0],lane:ln});}
  out.sort((a,b)=>a.t-b.t);assignCombos(out);return out;}
 // the chart from data/charts; a song pasted in with a new id has none yet, so it starts from a generated one
-function fileChart(id){return window.CHARTS&&CHARTS[id]||null;}
+function fileChart(id){const c=DIFF==='normal'?window.CHARTS_N:window.CHARTS;return c&&c[id]||null;}
 function baseChart(){rnd=mulberry(hash(SONG.bpm,SONG.name.length,7)*4294967296>>>0);return genChart();}// the song's own chart, the same every time
 
 function newGame(){
@@ -198,8 +208,8 @@ function newGame(){
  buildMax=[0,1].map(k=>Math.max(1,notes.filter(n=>n.sec==='build'&&n.k===k).length));
  buildStock=[0,0];districtSat=[0,0];released=[false,false];
  score=0;combo=0;maxCombo=0;nPerf=0;nGood=0;nMiss=0;
- lane=1;laneFrom=1;laneT=-9;holding=null;shakeT=-9;swingT=-9;fx=[];dashUntil=-9;jumpT=-9;slideT=-9;
- buildings=[];bEnd=-30;parts=[];rings=[];worldSat=0;held=[];kime=null;
+ lane=1;laneFrom=1;laneT=-9;holding=null;shakeT=-1e9;swingT=-9;fx=[];dashUntil=-9;jumpT=-9;slideT=-9;
+ quietT=null;buildings=[];bEnd=-30;parts=[];rings=[];worldSat=0;held=[];kime=null;
  lat=userLat!=null?userLat:(A.outputLatency||0)+(A.baseLatency||0);
  songStart=A.currentTime+1.2;nextStep=0;TAPE_T=null;
  if(FROM_LAST){const fb=TOTAL_BARS-12;songStart-=fb*BAR;nextStep=fb*16;notes=notes.filter(n=>n.t>=fb*BAR+0.01);holds=holds.filter(h=>h.t>=fb*BAR);buildStock=buildMax.slice();released=[true,true];districtSat=[1,0.85];}running=true;ended=false;startAmbience(Math.max(A.currentTime+0.05,songStart));master.gain.cancelScheduledValues(A.currentTime);master.gain.setValueAtTime(0.72*(SONG.vol||1),A.currentTime);// vol evens out how loud each genre's band is
@@ -210,9 +220,10 @@ function newGame(){
 function seekTo(bar){
  bar=Math.max(0,Math.min(TOTAL_BARS-1,bar|0));const t0=bar*BAR;
  if(A.state==='suspended')A.resume();resetBuses();
- songStart=A.currentTime+(MODE==='play'?1.2:0.3)-t0;nextStep=bar*16;// a player gets a moment to get readyTAPE_T=null;kime=null;holding=null;fx=[];parts=[];rings=[];
+ songStart=A.currentTime+(MODE==='play'?1.2:0.3)-t0;nextStep=bar*16;// a player gets a moment to get ready
+ TAPE_T=null;kime=null;quietT=null;holding=null;fx=[];parts=[];rings=[];
  for(const n of notes){n.done=n.t<t0-0.001;n.hitAt=null;n.missAt=null;}
- for(const h of holds){h.done=h.tEnd<=t0;h.started=false;}
+ for(const h of holds){h.done=h.tEnd<=t0;h.started=false;h.taps=0;h.at=null;h.rang=false;h.mult=h.done?1:undefined;if(h.snd){h.snd(false);h.snd=null;}}
  ni=0;while(ni<notes.length&&notes[ni].done)ni++;
  for(const k of[0,1]){buildStock[k]=notes.filter(n=>n.sec==='build'&&n.k===k&&n.t<t0).length;const h=holds.find(h=>h.k===k);released[k]=!!h&&h.tEnd<=t0;districtSat[k]=released[k]?ratio(k):0;}
  combo=0;lane=1;laneFrom=1;laneT=-9;jumpT=-9;slideT=-9;dashUntil=-9;
@@ -224,10 +235,13 @@ function seekTo(bar){
 function autoPlay(t){
  for(let i=ni;i<notes.length;i++){const n=notes[i];if(n.t>t)break;if(n.done)continue;
   const to=n.kind==='high'?0:n.kind==='low'?1:n.kind==='mid'?1-lane:n.lane;if(n.kind==='mid')n.lane=to;
+  if(MODE==='demo')thumb(n.kind==='high'?'up':n.kind==='low'?'down':to<lane?'up':to>lane?'down':'tap');
   laneFrom=lane;if(lane!==to){lane=to;laneT=t;}
   if(n.kind==='high')jumpT=t;if(n.kind==='low')slideT=t;
   hit(n,Math.abs(t-n.t));}
- for(const h of holds){if(!h.done&&!h.started&&t>=h.t){h.started=true;holding=h;}if(holding===h&&t>=h.tEnd)release(h,t-h.tEnd);}
+ for(const h of holds){if(h.mash){if(!h.done&&t>=h.t&&t<h.tEnd&&t-(h.at||-9)>=B/2){h.at=t;mashTap(h,t);if(MODE==='demo')thumb('tap');}continue;}
+  if(!h.done&&!h.started&&t>=h.t){h.started=true;holding=h;if(MODE==='demo'){thumb('press');if(cutSounds())h.snd=sfxCharge(A.currentTime,A.currentTime+(h.tEnd-t));}}
+  if(holding===h&&t>=h.tEnd){release(h,t-h.tEnd);if(MODE==='demo')thumb('lift');}}
 }
 
 // ---------- scheduler hooks ----------
@@ -257,7 +271,7 @@ function hit(n,d){
  if(n.sec==='drop'&&released[n.k])districtSat[n.k]=Math.min(1,districtSat[n.k]+(perfect?0.006:0.002));
  swingT=-9;fx.push({mo:n.mo||'cutDown',t:now(),y:LANE_Y[n.lane],perfect,fin:n.fin});
  burstParts(n,HERO_X+14,noteY(n)+5,perfect);
- if(cutSounds())sfxCut(n.mo,perfect,n.fin);kickT=now();n.cut=CUT_DIR[n.mo]||0;
+ if(cutSounds())sfxCut(n.mo,perfect,n.fin,n.reg);kickT=now();n.cut=CUT_DIR[n.mo]||0;
  if(n.pose){startKime();if(endingOf()!=='hits'){rings.push({y:heroY()-10,t:now(),good:true});shakeT=now();}}// the landing bursts the last color over the whole city
  if(n.fin){shakeT=now()-0.08;for(let i=0;i<10;i++){const a=i/10*Math.PI*2;parts.push({x:HERO_X+12,y:noteY(n)+5,vx:Math.cos(a)*90,vy:Math.sin(a)*90,life:0,max:0.45,col:i%2?PH.signB:PH.signA});}}
 }
@@ -277,18 +291,26 @@ function miss(n){
  if(n.sec==='drop'&&released[n.k])districtSat[n.k]=Math.max(0,districtSat[n.k]-0.03);
  shakeT=now();if(cutSounds())sfxMiss();
 }
-function release(h,d){
- const ad=Math.abs(d);const mult=ad<0.08?1:ad<0.16?0.85:d<0?0.4:0.7;
- h.done=true;if(holding===h)holding=null;
+function release(h,d){const ad=Math.abs(d);burst(h,ad<0.08?1:ad<0.16?0.85:d<0?0.4:0.7);}
+// a forced lock opens by itself on the drop's downbeat; it lets out as much color as the taps broke through
+function mashMult(h){return h.taps>=MASH_N?1:0.4+0.45*h.taps/MASH_N;}
+function mashTap(h,t){h.started=true;h.taps++;kickT=t;
+ fx.push({mo:h.taps%2?'cutDown':'cutUp',t:now(),y:LANE_Y[h.lane],perfect:true,fin:h.taps===MASH_N});
+ if(h.taps<=MASH_N){for(let i=0;i<5;i++){const a=Math.random()*Math.PI*2;parts.push({x:HERO_X+16,y:LANE_Y[h.lane]-12,vx:Math.cos(a)*50,vy:Math.sin(a)*50,life:0,max:0.4,col:h.taps>=MASH_N?'#ffffff':'#ffb54a'});}
+  if(cutSounds())sfxMash(h.taps/MASH_N);}}
+function burst(h,mult){
+ h.done=true;h.mult=mult;if(holding===h)holding=null;if(h.snd){h.snd(mult>=0.85);h.snd=null;}
  const k=h.k;released[k]=true;districtSat[k]=Math.min(1,ratio(k)*mult);
  rings.push({y:heroY()-10,t:now(),good:mult>=0.85});
  const dpx=now()*SPEED;
  for(const b of buildings)if(b.x+b.w>dpx){b.k=k;b.colorAt=now()+Math.max(0,b.x-dpx-HERO_X)/320;}
- sfxRelease(mult>=0.85);
+ if(!h.rang)sfxRelease(mult>=0.85,mult>=0.85?songStart+h.tEnd:0);// a clean early release still rings on the downbeat
 }
 function onPress(){
  if(!running)return;const t=now();
- for(const h of holds){if(!h.done&&!h.started&&t>h.t-0.25&&t<h.tEnd-0.15){h.started=true;holding=h;return;}}
+ // a tap meant for a drone on the downbeat right after a lock is not swallowed by the lock
+ for(const h of holds){if(h.mash&&!h.done&&t>h.t-0.12&&t<h.tEnd&&!(t>h.tEnd-WIN_G&&findNote(t,isBody(lane)))){mashTap(h,t);return;}}
+ for(const h of holds){if(!h.mash&&!h.done&&!h.started&&t>h.t-0.25&&t<h.tEnd-0.15&&!(t<h.t-WIN_G&&findNote(t,isBody(lane)))){h.started=true;holding=h;if(cutSounds())h.snd=sfxCharge(A.currentTime,A.currentTime+(h.tEnd-t));return;}}
  const r=findNote(t,isBody(lane));if(r)hit(r[0],r[1]);else{swingT=t;if(cutSounds())sfxSwing();}
 }
 function bestOf(a,b){return a&&b?(a[1]<=b[1]?a:b):(a||b);}
@@ -309,15 +331,46 @@ function onRelease(){if(holding)release(holding,now()-holding.tEnd);}
 // ---------- input ----------
 let pd=null;
 addEventListener('pointerdown',e=>{if(!running||MODE!=='play'||e.target.closest('.ov,.tool'))return;e.preventDefault();const t=now();pd={id:e.pointerId,y:e.clientY,t,fl:false};onPress();},{passive:false});
-addEventListener('pointermove',e=>{if(!pd||pd.id!==e.pointerId||pd.fl)return;const dy=e.clientY-pd.y;if(Math.abs(dy)>16&&now()-pd.t<0.35){pd.fl=true;onFlick(Math.sign(dy),pd.t);}});
+// a flick is judged at the touch; turning back without lifting the finger is the next flick (up-down chains in one stroke)
+const FLICK_PX=12;
+addEventListener('pointermove',e=>{if(!pd||pd.id!==e.pointerId)return;const y=e.clientY;
+ if(!pd.fl){const dy=y-pd.y;if(Math.abs(dy)>FLICK_PX&&now()-pd.t<0.35){pd.fl=Math.sign(dy);pd.ext=y;onFlick(pd.fl,pd.t);}return;}
+ if((y-pd.ext)*pd.fl>0){pd.ext=y;return;}// still going the same way
+ if(Math.abs(y-pd.ext)>FLICK_PX){pd.fl=-pd.fl;pd.ext=y;onFlick(pd.fl,now());}});
 addEventListener('pointerup',e=>{if(!pd||pd.id!==e.pointerId)return;pd=null;onRelease();});
-addEventListener('pointercancel',()=>{pd=null;onRelease();});
+// the finger was taken by the system (iOS: the swipe up from the bottom edge): the song stops where it is, and a touch goes on
+addEventListener('pointercancel',e=>{const mine=pd&&pd.id===e.pointerId;pd=null;
+ if(mine&&running&&MODE==='play'){pauseSong();$('freeze').classList.remove('hide');}else onRelease();});
 const keyDown={};
 addEventListener('keydown',e=>{if(e.repeat||!running)return;const t=now();
  if(e.code==='Space'||e.code==='KeyJ'||e.code==='KeyF'){keyDown[e.code]=1;onPress();e.preventDefault();}
  else if(e.code==='ArrowUp'||e.code==='KeyW'){onFlick(-1,t);e.preventDefault();}
  else if(e.code==='ArrowDown'||e.code==='KeyS'){onFlick(1,t);e.preventDefault();}});
 addEventListener('keyup',e=>{if(keyDown[e.code]){delete keyDown[e.code];onRelease();}});
+
+// ---------- pause ----------
+// The song stops where it is and every sound already queued is dropped. Going on starts again from the top of that bar
+// after a short breath, so the beat is heard again before the next drone; the cuts already made stay as they were.
+function pauseSong(){if(!running||pausedAt!==null||!A)return;pausedAt=now();running=false;pd=null;for(const k in keyDown)delete keyDown[k];
+ for(const h of holds)if(!h.done){h.rang=false;}
+ for(const h of holds)if(!h.done&&h.started){h.started=false;h.taps=0;h.at=null;if(h.snd){h.snd(false);h.snd=null;}}
+ holding=null;resetBuses();stopAmbience();}
+function resumeSong(){if(pausedAt===null)return;const p=pausedAt;
+ let r=Math.max(0,Math.floor(p/BAR))*BAR;for(const h of holds)if(!h.done&&h.t<=p&&p<h.tEnd)r=Math.min(r,h.t);// a key or a lock is played again from its start
+ const bar=Math.round(r/BAR);
+ if(A.state==='suspended')A.resume();
+ pausedAt=null;songStart=A.currentTime+1.2-r;nextStep=bar*16;TAPE_T=null;quietT=null;
+ fx=[];parts=[];rings=[];laneT=-9;jumpT=-9;slideT=-9;dashUntil=-9;jumpReach=slideReach=false;
+ buildings=[];bEnd=(r-1.2-lat)*SPEED-40;worldSat=targetSat(Math.max(0,r));
+ running=true;startAmbience(A.currentTime+0.05);applyTrim(secAt(bar),A.currentTime,0.01);
+ master.gain.cancelScheduledValues(A.currentTime);master.gain.setValueAtTime(0.72*(SONG.vol||1),A.currentTime);}
+// stopping the song for good (again from the top, or back to the list)
+function quitSong(){$('pauseBtn').classList.add('hide');pausedAt=null;running=false;ended=true;holding=null;if(A){if(A.state==='suspended')A.resume();resetBuses();}stopAmbience();}
+// the volume button and leaving the page (common/sound.js) pause the song too
+addEventListener('mg:pause',()=>{if(MODE==='play')pauseSong();});
+addEventListener('mg:resume',()=>{if(!$('pauseMenu').classList.contains('hide'))return;$('freeze').classList.add('hide');resumeSong();});
+// a drag never scrolls or closes the page (LINE's in-app browser closes on a downward drag); lists and sliders keep theirs
+document.addEventListener('touchmove',e=>{if(!e.target.closest('#select,#editor,#songIO,textarea,input,.mg-vol'))e.preventDefault();},{passive:false});
 
 // ---------- world ----------
 function heroY(){const t=now();const k=Math.min(1,Math.max(0,(t-laneT)/0.11));let y=LANE_Y[laneFrom]+(LANE_Y[lane]-LANE_Y[laneFrom])*k-Math.sin(k*Math.PI)*10;
@@ -414,6 +467,15 @@ function draw(dt){
  for(const h of holds){
   const x0=HERO_X+10+(h.t-t)*SPEED,x1=HERO_X+10+(h.tEnd-t)*SPEED;
   if(x1<-20||x0>W+20)continue;if(h.done&&t-h.tEnd>0.05)continue;
+  if(h.mash){const ly=LANE_Y[h.lane]-12,a0=h.started?HERO_X+4:x0,pulse=0.5+0.5*Math.sin(t*14);
+   // a lock to force: a chain of bolts, one per tap; each tap breaks the nearest one
+   for(let i=0;i<MASH_N;i++){const bx=x0+(x1-x0)*(i+0.5)/MASH_N;if(i<h.taps||bx<a0)continue;
+    g.globalAlpha=0.85;g.fillStyle='#0a0a0c';g.fillRect(Math.round(bx)-3,ly-4,7,9);g.fillStyle='#ffb54a';g.fillRect(Math.round(bx)-2,ly-3,5,7);g.fillStyle='#ffffff';g.fillRect(Math.round(bx)-1,ly-2,1,5);g.globalAlpha=1;}
+   if(x1>a0){g.globalAlpha=0.35+0.15*pulse;g.fillStyle='#ffb54a';g.fillRect(Math.round(a0),ly,Math.round(x1-a0),1);g.globalAlpha=1;}
+   const lx=Math.round(x1),open=h.taps>=MASH_N;g.fillStyle='#0a0a0c';g.fillRect(lx-5,ly-8,11,15);g.fillStyle=open?'#ffffff':'#ffb54a';g.fillRect(lx-4,ly-7,9,13);
+   g.fillStyle='#0a0a0c';g.fillRect(lx-1,ly-3,3,5);g.strokeStyle=open?'#ffffff':'#ffb54a';g.lineWidth=2;g.beginPath();g.arc(lx+0.5+(open?3:0),ly-8-(open?2:0),3.5,Math.PI,0);g.stroke();
+   if(!h.started&&x0<W){g.strokeStyle='rgba(255,181,74,'+(0.35+0.4*pulse)+')';g.lineWidth=1;g.beginPath();g.arc(x0+0.5,ly,9+pulse*2,0,7);g.stroke();}
+   continue;}
   const ly=LANE_Y[h.lane]-12,a0=h.started?HERO_X+4:x0,pulse=0.5+0.5*Math.sin(t*14);
   if(x1>a0){g.globalAlpha=h.started?0.9:0.55;
    g.fillStyle='#ff3d8b';g.fillRect(Math.round(a0),ly-3,Math.round(x1-a0),7);g.fillStyle='#39f0ff';g.fillRect(Math.round(a0),ly-1,Math.round(x1-a0),3);
@@ -464,6 +526,9 @@ function draw(dt){
  if(holding){const pr=Math.min(1,Math.max(0,(t-holding.t)/(holding.tEnd-holding.t)));
   g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=2;g.beginPath();g.arc(HERO_X,hy-9,14,0,7);g.stroke();
   g.strokeStyle=pr>0.94?'#ffffff':'#ff3d8b';g.beginPath();g.arc(HERO_X,hy-9,14,-Math.PI/2,-Math.PI/2+pr*Math.PI*2);g.stroke();}
+ {const mh=holds.find(h=>h.mash&&h.started&&!h.done);if(mh){const pr=Math.min(1,mh.taps/MASH_N);
+  g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=2;g.beginPath();g.arc(HERO_X,hy-9,14,0,7);g.stroke();
+  g.strokeStyle=pr>=1?'#ffffff':'#ffb54a';g.beginPath();g.arc(HERO_X,hy-9,14,-Math.PI/2,-Math.PI/2+pr*Math.PI*2);g.stroke();}}
  // empty swing
  const se=t-swingT;if(se>=0&&se<0.1){g.globalAlpha=0.5*(1-se/0.1);g.fillStyle='#c8fcff';
   for(let a=-0.9;a<=0.9;a+=0.15)g.fillRect(Math.round(HERO_X+4+Math.cos(a)*12),Math.round(hy-9+Math.sin(a)*12),1,1);g.globalAlpha=1;}
@@ -498,70 +563,126 @@ function draw(dt){
 // ---------- loop ----------
 let lastT=performance.now();
 function update(){
+ // a tutorial scene starts over: the rest of this frame would judge the fresh drones against the old time and miss them all
+ if(MODE==='demo'&&tut&&now()>tut.sc.to*BAR){demoLoop();return;}
  const t=now();
  while(ni<notes.length&&notes[ni].done)ni++;
- if(MODE==='listen')autoPlay(t);
+ if(MODE==='listen'||MODE==='demo')autoPlay(t);
  // the moves themselves have reach: dashing between lanes, jumping and sliding cut what they meet
  if(t<dashUntil){const r=findNote(t,n=>(n.kind==='body'&&n.lane===lane)||n.kind==='mid');if(r){dashUntil=-9;if(r[0].kind==='mid')r[0].lane=lane;hit(r[0],r[1]);}}
  if(jumpReach&&t-jumpT<MOVE*0.6){const r=findNote(t,n=>n.kind==='high');if(r){jumpReach=false;hit(r[0],r[1]);}}
  if(slideReach&&t-slideT<MOVE*0.6){const r=findNote(t,n=>n.kind==='low');if(r){slideReach=false;hit(r[0],r[1]);}}
  for(let i=ni;i<notes.length;i++){const n=notes[i];if(n.t>t-WIN_G)break;if(!n.done)miss(n);}
- for(const h of holds)if(!h.done&&t>h.tEnd+0.16)release(h,holding===h?0.3:-1);
+ // the opening sound lands on the downbeat itself, scheduled a moment ahead on the audio clock: judging it when the
+ // player hears the downbeat would put it a beat of output delay behind the music (the score still waits for the judgment)
+ {const at=A.currentTime+0.05;
+  for(const h of holds){if(h.done||h.rang||songStart+h.tEnd>at)continue;
+   if(h.mash?h.taps>=MASH_N:holding===h){h.rang=true;const tt=songStart+h.tEnd;if(h.snd){h.snd(true,tt);h.snd=null;}sfxRelease(true,tt);}}}
+ for(const h of holds)if(h.mash&&!h.done&&t>=h.tEnd)burst(h,mashMult(h));
+ for(const h of holds)if(!h.mash&&!h.done&&t>h.tEnd+0.16)release(h,holding===h?0.3:-1);
  if(kime&&!kime.burst&&t>=kime.at){sfxSheathe();burstHeld();}
  if(A){const p=phaseAt(t);let f=450;
   if(p.type==='build')f=450+1600*ratio(p.k);else if(p.type==='drop')f=650+17000*Math.pow(dropSat(p.k),1.6);
   else if(p.type==='break')f=2200+6000*districtSat[0];else if(p.type==='outro'||p.type==='end')f=700+17000*Math.pow(avgSat(),1.6);
   if(t-shakeT>0.15)lp.frequency.setTargetAtTime(f,A.currentTime,0.08);}
- if(t>SONG_LEN+2.5&&!ended)finish();
+ // the result comes once the landing has rung out (a short cut ends sooner than a long chord); never later than before
+ if(!ended){const land=kime?kime.t:SONG_LEN-2*BAR;
+  if(t>land+0.6&&bandLevel()<0.004){if(quietT===null)quietT=t;}else quietT=null;
+  if((quietT!==null&&t-quietT>0.6)||t>SONG_LEN+2.5)finish();}
 }
 function frame(ts){const dt=Math.min(0.05,(ts-lastT)/1000);lastT=ts;if(running){schedule();update();}draw(dt);requestAnimationFrame(frame);}
 
 // ---------- screens ----------
 const $=id=>document.getElementById(id);
+function colorShare(){let tot=0,got=0;
+ for(const n of notes){tot++;if(n.done&&n.missAt==null)got++;}
+ for(const h of holds){tot+=HOLD_W;if(h.done)got+=HOLD_W*(h.mult>=0.85?1:(h.mult||0));}
+ // 100% only when no color was lost
+ return got>=tot?100:Math.min(99,Math.floor(100*got/tot));}
 function finish(){
- ended=true;running=false;stopAmbience();
+ ended=true;running=false;stopAmbience();$('pauseBtn').classList.add('hide');
  if(MODE==='listen'||fromEditor){toolsEnded();if(MODE==='listen')return;}
  $('toEdBtn').classList.toggle('hide',!fromEditor);$('edBack').classList.add('hide');
- const sat=Math.round(avgSat()*100);
- $('rSat').innerHTML=sat+'<small>%</small>';
+ // the score leads; a full combo (no color lost: every drone cut, every key and lock opened clean) is celebrated under it
+ const sat=colorShare(),total=score+Math.round(avgSat()*10000);
+ // CLEAR: 8 in 10 cut (drones, keys and locks alike) opens the next district; PERFECT: nothing missed
+ const all=notes.length+holds.length,cut=notes.filter(n=>n.done&&n.missAt==null).length+holds.filter(h=>h.done&&(h.mult||0)>0).length;
+ const perfect=cut>=all,clear=cut>=all*0.8;
+ const i=SONGS.indexOf(SONG),next=SONGS[i+1],opens=clear&&next&&!isOpen(i+1);
+ $('rSat').textContent=total.toLocaleString();
+ $('rCombo').innerHTML=(perfect?'<span class="fc">PERFECT</span>':clear?'<span class="fc clr">CLEAR</span>':'<span class="nclr">8割斬ると CLEAR　いま '+Math.floor(100*cut/all)+'%</span>')+'最大コンボ <b>'+maxCombo+'</b>'+(opens?'<span class="unl"></span>':'');
+ if(opens)$('rCombo').querySelector('.unl').textContent='新しい街区「'+next.name+'」がひらいた';
+ $('rDet').textContent='ジャスト '+nPerf+'　ナイス '+nGood+'　ミス '+nMiss;
  $('rCmt').textContent=sat>=95?'街じゅうが、きみの色になった。':sat>=75?'ネオンが街に戻ってきた。':sat>=50?'まだ灰色の路地が残っている。':'色は、まだ眠っている。';
- const total=score+Math.round(avgSat()*10000);
- $('rDet').innerHTML='スコア '+total.toLocaleString()+'<br>最大コンボ '+maxCombo+'　ジャスト '+nPerf+'　ナイス '+nGood+'　ミス '+nMiss;
- saveBest(SONG.id,sat,total);$('rLbl').textContent=SONG.name+'の彩度';
+ saveBest(SONG.id,total,clear,perfect);$('rLbl').textContent=SONG.name+'　'+DIFF_JA[DIFF];
+ try{prepareShare(total,clear,perfect);}catch(e){}
  $('result').classList.remove('hide');
 }
-function showLat(){$('latInfo').textContent=userLat!=null?'タイミング調整：'+Math.round(userLat*1000)+'ms':'音を出して遊んでください';}
+// ---------- timing ----------
+// One value: how late the sound reaches the ears (Bluetooth earphones can be 0.2s or more). A metronome keeps ticking
+// on this screen: each tap shows how far it was from the beat as the game would judge it, so −/+ can be checked on the spot.
+// 「測る」 takes it from eight taps; 「リセット」 goes back to what the device itself reports.
+const autoLat=()=>A?(A.outputLatency||0)+(A.baseLatency||0):0;
+const effLat=()=>userLat!=null?userLat:autoLat();
+const LAT_MIN=-0.1,LAT_MAX=0.6,CAL_B=0.75;// slow enough that a long delay can't be mistaken for an early tap on the next beat
+const ms=v=>(v>0.0005?'+':v<-0.0005?'−':'')+Math.abs(Math.round(v*1000))+'ms';
+function saveLat(v){userLat=v==null?null:Math.round(Math.max(LAT_MIN,Math.min(LAT_MAX,v))*1000)/1000;
+ try{if(userLat==null)localStorage.removeItem('iro-lat');else localStorage.setItem('iro-lat',String(userLat));}catch(e){}showLat();}
+function showLat(){$('latInfo').textContent=userLat!=null?'タイミング調整：'+ms(userLat):'音を出して遊んでください';
+ if(!$('cal').classList.contains('hide')){$('calVal').textContent=ms(effLat());$('calSub').textContent=userLat!=null?'':'調整なし（端末の値のまま）';
+  $('calReset').classList.toggle('hide',userLat==null);}}
 showLat();
-let cal=null;
-$('calBtn').addEventListener('click',()=>{$('title').classList.add('hide');$('cal').classList.remove('hide');$('calVal').textContent='';$('calOk').classList.add('hide');$('calGo').classList.remove('hide');$('calGo').textContent='はじめる';});
-$('calBack').addEventListener('click',()=>{cal=null;$('cal').classList.add('hide');$('title').classList.remove('hide');});
-$('calGo').addEventListener('click',e=>{e.stopPropagation();$('calGo').classList.remove('sub');initAudio();if(A.state==='suspended')A.resume();
- // slow enough that a long Bluetooth delay (up to 0.6s) can't be mistaken for an early tap on the next beat
- const cb=0.75,t0=A.currentTime+0.6;const beats=[];for(let i=0;i<12;i++){const bt=t0+i*cb;beats.push(bt);kick(bt,0.9,sfxBus);piano(bt,i%4===0?69:64,0.2,0.12,sfxBus);}
- cal={beats,taps:[],ready:t0+cb*1.5};$('calGo').classList.add('hide');$('calOk').classList.add('hide');$('calVal').textContent='…';
- const me=cal;setTimeout(()=>{if(cal===me&&!cal.done){$('calVal').textContent='';$('calMsg').innerHTML='うまく測れませんでした。<br>もう一度どうぞ。';$('calGo').classList.remove('hide');$('calGo').textContent='もう一度';cal=null;}},(12*cb+1.6)*1000);});
-$('cal').addEventListener('pointerdown',e=>{if(!cal||cal.done||e.target.tagName==='BUTTON')return;const tt=A.currentTime;if(tt<cal.ready-0.25)return;
- // a tap belongs to the latest beat already played (a little early is allowed): sound reaches the ears late, never early
- let best=null;for(const b of cal.beats){const d=tt-b;if(d>-0.15&&d<0.6&&(best==null||d<best))best=d;}
- if(best!=null)cal.taps.push(best);$('calVal').textContent=cal.taps.length+' / 8';
- if(cal.taps.length>=8){const v=cal.taps.slice().sort((a,b)=>a-b);const lv=Math.max(0,Math.min(0.6,v[4]));
-  cal.result=lv;$('calVal').innerHTML=Math.round(lv*1000)+'<small>ms</small>';$('calMsg').innerHTML=lv>CUT_LAG_MAX?'音の遅れを測りました。<br>遅れが大きいので、斬る音は鳴らさずに遊びます。':'音の遅れを測りました。';
-  $('calOk').classList.remove('hide');$('calGo').classList.remove('hide');$('calGo').classList.add('sub');$('calGo').textContent='もう一度';cal.done=true;}});
-$('calOk').addEventListener('click',()=>{if(cal&&cal.done){userLat=cal.result;try{localStorage.setItem('iro-lat',String(userLat));}catch(e){}}cal=null;showLat();$('cal').classList.add('hide');$('title').classList.remove('hide');});
+let calTut=false;
+let cal=null;// {next: the next beat to schedule, beats: [times], mode: 'check'|'measure', taps}
+function calTick(){if(!cal)return;while(cal.next<A.currentTime+0.2){const bt=cal.next,i=cal.beats.length;cal.beats.push(bt);if(cal.beats.length>32)cal.beats.shift();
+  kick(bt,0.9,sfxBus);piano(bt,cal.n%4===0?69:64,0.2,0.12,sfxBus);cal.n++;cal.next+=CAL_B;}
+ if(cal.mode==='measure'&&A.currentTime>cal.until){calCheck('うまく測れませんでした。もう一度どうぞ。');}}
+function calCheck(msg){cal.mode='check';cal.taps=[];cal.offs=[];
+ $('calMsg').innerHTML=msg||(calTut&&userLat==null?'音は少し遅れて耳に届きます（ワイヤレスイヤホンは特に）。<br>「測る」で、いまの遅れに合わせます。':'音に合わせてタップすると、ずれが出ます。<br>0に近くなるよう −／＋ で合わせてください。');$('calHit').textContent='';$('calGo').classList.remove('hide');showLat();}
+function openCal(mode){initAudio();calTut=mode==='tutorial';$('calLbl').textContent=calTut?'はじめに、タイミング調整':'タイミング調整';$('calBack').textContent=calTut?'つぎへ':'もどる';$('calBack').classList.toggle('sub',!calTut);if(A.state==='suspended')A.resume();
+ $('title').classList.add('hide');$('cal').classList.remove('hide');
+ cal={next:A.currentTime+0.4,beats:[],n:0,mode:'check',taps:[],offs:[],timer:setInterval(calTick,40)};calTick();calCheck();}
+function closeCal(){if(cal)clearInterval(cal.timer);cal=null;$('cal').classList.add('hide');if(calTut){calTut=false;startTutorial('select');}else $('title').classList.remove('hide');}
+$('calBtn').addEventListener('click',()=>openCal());
+$('calBack').addEventListener('click',closeCal);
+$('calGo').addEventListener('click',e=>{e.stopPropagation();if(!cal)return;cal.mode='measure';cal.taps=[];cal.from=A.currentTime+CAL_B*0.5;cal.until=A.currentTime+CAL_B*16;
+ $('calGo').classList.add('hide');$('calMsg').innerHTML='画面は見ずに、聞こえた音に合わせて<br>8回タップしてください。';$('calHit').textContent='0 / 8';});
+$('calMinus').addEventListener('click',e=>{e.stopPropagation();saveLat(effLat()-0.01);});
+$('calPlus').addEventListener('click',e=>{e.stopPropagation();saveLat(effLat()+0.01);});
+$('calReset').addEventListener('click',e=>{e.stopPropagation();saveLat(null);if(cal)calCheck();});
+$('cal').addEventListener('pointerdown',e=>{if(!cal||e.target.closest('button'))return;const tt=A.currentTime;
+ if(cal.mode==='measure'){if(tt<cal.from)return;
+  // a tap belongs to the latest beat already played (a little early is allowed): sound reaches the ears late, never early
+  let best=null;for(const b of cal.beats){const d=tt-b;if(d>-0.15&&d<LAT_MAX&&(best==null||d<best))best=d;}
+  if(best!=null)cal.taps.push(best);$('calHit').textContent=cal.taps.length+' / 8';
+  if(cal.taps.length>=8){const v=cal.taps.slice().sort((a,b)=>a-b);saveLat(Math.max(0,(v[3]+v[4])/2));
+   calCheck(effLat()>CUT_LAG_MAX?'測りました。遅れが大きいので、斬る音は鳴らさずに遊びます。<br>タップして、ずれが0に近いか確かめてください。':'測りました。<br>タップして、ずれが0に近いか確かめてください。');}
+  return;}
+ // checking: the tap against the nearest beat as the game hears it (the beat plus the delay)
+ const L=effLat();let d=null;for(const b of cal.beats){const x=tt-(b+L);if(d==null||Math.abs(x)<Math.abs(d))d=x;}
+ if(d==null||Math.abs(d)>CAL_B/2)return;if(L<=CUT_LAG_MAX)sfxSwing();
+ cal.offs.push(d);if(cal.offs.length>6)cal.offs.shift();const avg=cal.offs.reduce((a,b)=>a+b,0)/cal.offs.length;
+ $('calHit').innerHTML=(Math.abs(d)<0.025?'ぴったり':d<0?'はやい '+ms(d):'おそい '+ms(d))+'<small>この'+cal.offs.length+'回の平均 '+ms(avg)+'</small>';});
 
-function loadBest(id){try{const v=localStorage.getItem('iro-best-'+id);return v?JSON.parse(v):null;}catch(e){return null;}}
-function saveBest(id,sat,total){const b=loadBest(id);if(b&&b.total>=total)return;try{localStorage.setItem('iro-best-'+id,JSON.stringify({sat,total}));}catch(e){}}
+function loadBest(id){try{const v=localStorage.getItem('iro-best-'+dkey(id));return v?JSON.parse(v):null;}catch(e){return null;}}
+function saveBest(id,total,clear,perfect){const b=loadBest(id)||{total:0};const v={total:Math.max(b.total||0,total),clear:!!(clear||b.clear),perfect:!!(perfect||b.perfect)};try{localStorage.setItem('iro-best-'+dkey(id),JSON.stringify(v));}catch(e){}}
+// at first only the first district is open; clearing one in either difficulty opens the next in both
+function isOpen(i){if(i<=0)return true;const id=SONGS[i-1].id;
+ return['','n-'].some(k=>{try{const v=JSON.parse(localStorage.getItem('iro-best-'+k+id)||'null');return !!(v&&v.clear);}catch(e){return false;}});}
 function swatch(sg){const c=document.createElement('canvas');c.width=10;c.height=13;c.className='sw';const x=c.getContext('2d');const p=sg.pal;
  const gr=x.createLinearGradient(0,0,0,13);gr.addColorStop(0,p.top);gr.addColorStop(0.6,p.mid);gr.addColorStop(1,p.bot);x.fillStyle=gr;x.fillRect(0,0,10,13);
  x.fillStyle='rgba(0,0,0,.55)';x.fillRect(1,5,3,8);x.fillRect(5,3,4,10);x.fillStyle=p.winA;x.fillRect(2,7,1,1);x.fillRect(6,5,1,1);x.fillRect(7,8,1,1);x.fillStyle=p.winB;x.fillRect(2,10,1,1);x.fillRect(6,10,1,1);x.fillStyle=p.signA;x.fillRect(8,4,1,3);return c;}
 function buildList(){const L=$('songList');L.innerHTML='';
- for(const sg of SONGS){const el=document.createElement('div');el.className='song';const b=loadBest(sg.id);
+ for(const t of document.querySelectorAll('#diffTabs button'))t.classList.toggle('on',t.dataset.d===DIFF);
+ SONGS.forEach((sg,i)=>{const el=document.createElement('div');const b=loadBest(sg.id),open=isOpen(i);el.className='song'+(open?'':' locked');
   el.appendChild(swatch(sg));
-  const info=document.createElement('div');info.className='sinfo';info.innerHTML='<div class="sname"></div><div class="ssub"></div>';info.children[0].textContent=sg.name;info.children[1].textContent=sg.sub;el.appendChild(info);
-  const meta=document.createElement('div');meta.className='smeta';meta.innerHTML='BPM '+sg.bpm+'<br>'+'◆'.repeat(sg.diff)+'<span style="opacity:.3">'+'◆'.repeat(3-sg.diff)+'</span><br>'+(b?'彩度 <b>'+b.sat+'%</b>':'—');el.appendChild(meta);
+  const info=document.createElement('div');info.className='sinfo';info.innerHTML='<div class="sname"></div><div class="ssub"></div>';info.children[0].textContent=sg.name;info.children[1].textContent=open?sg.sub:'ひとつ前の街区を CLEAR するとひらく';el.appendChild(info);
+  const st=starOf(sg),badge=b&&b.perfect?'<span class="perf">PERFECT</span>':b&&b.clear?'<span class="clr">CLEAR</span>':'';
+  const meta=document.createElement('div');meta.className='smeta';meta.innerHTML='BPM '+sg.bpm+'<br><span class="'+DIFF+'">'+DIFF_JA[DIFF]+(st?' ★'+st:'')+'</span><br>'+(!open?'LOCK':b?badge+' <b>'+(b.total||0).toLocaleString()+'</b>':'—');el.appendChild(meta);
   if(loadChart(sg.id))meta.innerHTML+='<br><span style="color:var(--cyan)">譜面 編集済み</span>';
   if(localSongs()[sg.id])meta.innerHTML+='<br><span style="color:var(--cyan)">曲 変更あり</span>';
-  el.addEventListener('click',()=>pickSong(sg));L.appendChild(el);}}
+  el.addEventListener('click',()=>{if(open||(DEV&&TOOL!=='play'))pickSong(sg);});L.appendChild(el);});}
+for(const t of document.querySelectorAll('#diffTabs button'))t.addEventListener('click',()=>{DIFF=t.dataset.d;try{localStorage.setItem('iro-diff',DIFF);}catch(e){}buildList();});
 const ENDINGS=[['auto','曲ごとのおすすめ'],['tag','A 最後の一行をくり返して着地'],['intro','E イントロに戻って締める'],['fade','F 走り去ってフェードアウト'],['cut','G 一撃で切って締める'],['hits','いまの締め（止め打ち）']];
 const KEYUPS=[['auto','転調：曲ごと'],['on','転調：あり'],['off','転調：なし']];
 function buildEndings(){const box=$('endList');box.innerHTML='';
@@ -570,13 +691,83 @@ function buildEndings(){const box=$('endList');box.innerHTML='';
  const row=document.createElement('div');row.className='endRow';box.appendChild(row);
  for(const[id,label]of KEYUPS)opt(label,KEYUP===id,()=>{KEYUP=id;try{localStorage.setItem('iro-keyup',id);}catch(e){}buildEndings();},row);
  $('fromLast').classList.toggle('on',FROM_LAST);}
-function openSelect(){buildList();buildEndings();buildTools();$('title').classList.add('hide');$('result').classList.add('hide');$('select').classList.remove('hide');}
-function start(sg){initAudio();if(A.state==='suspended')A.resume();applySong(sg||SONG);$('title').classList.add('hide');$('result').classList.add('hide');$('select').classList.add('hide');newGame();}
-$('startBtn').addEventListener('click',openSelect);
-$('fromLast').addEventListener('click',()=>{FROM_LAST=!FROM_LAST;buildEndings();});
+function openSelect(){buildList();if(DEV){buildEndings();buildTools();}$('title').classList.add('hide');$('result').classList.add('hide');$('select').classList.remove('hide');}
+function start(sg){initAudio();if(A.state==='suspended')A.resume();applySong(sg||SONG);$('title').classList.add('hide');$('result').classList.add('hide');$('select').classList.add('hide');newGame();$('pauseBtn').classList.toggle('hide',MODE!=='play');}
+$('startBtn').addEventListener('click',()=>{if(tutSeen())openSelect();else openCal('tutorial');});
+$('pauseBtn').addEventListener('click',()=>{if(!running||MODE!=='play')return;pauseSong();$('pauseMenu').classList.remove('hide');});
+$('psGo').addEventListener('click',()=>{$('pauseMenu').classList.add('hide');resumeSong();});
+$('psAgain').addEventListener('click',()=>{$('pauseMenu').classList.add('hide');quitSong();start(SONG);});
+$('psSel').addEventListener('click',()=>{$('pauseMenu').classList.add('hide');quitSong();openSelect();});
+$('freeze').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();$('freeze').classList.add('hide');resumeSong();});
+if(DEV)$('fromLast').addEventListener('click',()=>{FROM_LAST=!FROM_LAST;buildEndings();});
 $('againBtn').addEventListener('click',()=>start(SONG));
 $('toSelBtn').addEventListener('click',openSelect);
 $('selBack').addEventListener('click',()=>{$('select').classList.add('hide');$('title').classList.remove('hide');});
+// ---------- share ----------
+// A square card: the district as the song ended (its colors back), the logo, the song and its stars, the score,
+// then the closing line and the counts, in the result's order.
+function prepareShare(total,clear,perfect){if(!window.MG||!MG.share)return;
+ const S=1080,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),F="'DotGothic16',monospace";
+ x.fillStyle='#050507';x.fillRect(0,0,S,S);x.imageSmoothingEnabled=false;
+ const sy=60,side=W;x.drawImage(cv,0,sy,side,side,0,0,S,S);// the lanes and the skyline, 8 pixels to a dot
+ const veil=x.createLinearGradient(0,0,0,S);veil.addColorStop(0,'rgba(5,5,7,.55)');veil.addColorStop(.45,'rgba(5,5,7,.35)');veil.addColorStop(1,'rgba(5,5,7,.92)');
+ x.fillStyle=veil;x.fillRect(0,0,S,S);x.textAlign='center';
+ const fit=(t,y,size,col,maxW=S-140)=>{x.font=size+'px '+F;const w=x.measureText(t).width;if(w>maxW)x.font=(size*maxW/w)+'px '+F;x.fillStyle=col;x.fillText(t,S/2,y);};
+ // the logo as on the title: white with a pink and a cyan edge
+ x.font='120px '+F;for(const[dx,col]of[[6,'#ff3d8b'],[-6,'#39f0ff'],[0,'#f2f2f4']]){x.fillStyle=col;x.fillText('彩鍵',S/2+dx,160);}
+ fit('いろかぎ',214,30,'#8a8c93');
+ fit(SONG.name+'　'+DIFF_JA[DIFF]+(starOf(SONG)?' ★'+starOf(SONG):''),600,46,'#e6e6ea');
+ fit(total.toLocaleString(),760,150,'#ffffff');
+ fit(perfect?'PERFECT':clear?'CLEAR':'最大コンボ '+maxCombo,850,clear?56:40,clear?'#ffffff':'#e9e9ee');
+ fit($('rCmt').textContent,935,36,'#e9e9ee');
+ fit('ジャスト '+nPerf+'　ナイス '+nGood+'　ミス '+nMiss,1000,30,'#8a8c93');
+ const page=/^https?:/.test(location.href)&&!/claude\.ai|claudeusercontent/.test(location.href)?'\n'+location.href.split('#')[0].split('?')[0]:'';
+ const text='彩鍵\n'+SONG.name+' '+DIFF_JA[DIFF]+(starOf(SONG)?'★'+starOf(SONG):'')+'\n'+total.toLocaleString()+'点'+(perfect?' PERFECT':clear?' CLEAR':'')+'\n#彩鍵'+page;
+ MG.share.prepare(c,{text,name:'irokagi-'+SONG.id+'.png'});}
+$('shareBtn').addEventListener('click',()=>MG.share.open());
+
+// ---------- tutorial ----------
+// First the timing (the clicks must meet the ears), then one scene per move: a short heading, one line,
+// and the real game playing that move by itself on a loop, with a thumb showing the touch.
+const TUT_KEY='iro-tut',TUT_SONG='neon';
+const tutSeen=()=>{try{return !!localStorage.getItem(TUT_KEY);}catch(e){return true;}};
+const rep4=(bars,beats)=>bars.flatMap(b=>beats.map(([bt,k,l])=>[b,bt,k,l]));
+const TUT_SCENES=[
+ {h:'街の色を取り返せ',p:'あなたは地下のハッカー。敵が抱えた色を斬って、灰色の街に戻そう。',from:12,to:14,color:1,
+  notes:rep4([12,13],[[0,'body',1],[1,'body',1],[2,'body',0],[3,'body',0]])},
+ {h:'タップで斬る',p:'同じ高さに来た敵は、タップで斬る。',from:4,to:6,notes:rep4([4,5],[[0,'body',1],[1,'body',1],[2,'body',1],[3,'body',1]])},
+ {h:'上下にはらって段を替える',p:'もう一方の段の敵は、上下にはらって飛び移りながら斬る。',from:4,to:6,notes:rep4([4,5],[[0,'body',0],[1,'body',1],[2,'body',0],[3,'body',1]])},
+ {h:'ジャンプ斬りとスライディング',p:'上の段でさらに上へはらうと跳び、下の段でさらに下へはらうと滑る。',from:4,to:6,notes:rep4([4,5],[[0,'body',0],[1,'high',0],[2,'body',1],[3,'low',1]])},
+ {h:'段のあいだの敵',p:'段のあいだに浮かぶ敵は、段を替える動きで斬れる。',from:4,to:6,notes:rep4([4,5],[[0,'mid',0],[1,'mid',1],[2,'mid',0],[3,'mid',1]])},
+ {h:'光の帯は、サビの頭で離す',p:'溜めで集めた色は光の帯になる。押したまま、サビの頭で離して解き放つ。',from:10,to:13,
+  notes:[...rep4([10],[[0,'body',1],[1,'body',1],[2,'body',1],[3,'body',1]]),...rep4([12],[[1,'body',1],[2,'body',0],[3,'body',0]])],holds:[[11,1]]},
+ {h:'錠は、連打で破る',p:'錠が来たら連打。サビの頭で開いて、色があふれ出す。',from:10,to:13,
+  notes:[...rep4([10],[[0,'body',1],[1,'body',1],[2,'body',1],[3,'body',1]]),...rep4([12],[[1,'body',1],[2,'body',0],[3,'body',0]])],holds:[[11,1,'mash']]},
+];
+let tut=null;// {i, sc, after: what the last button does}
+// the thumb drawn under the demo makes the same touch: one short move per cut (each starts over, even the same move twice), pressed down through a key
+const THUMB_MOVE={tap:[{transform:'none'},{transform:'scale(.86) translateY(4px)',offset:.4},{transform:'none'}],
+ up:[{transform:'none'},{transform:'translateY(-26px)',offset:.45},{transform:'none'}],down:[{transform:'none'},{transform:'translateY(26px)',offset:.45},{transform:'none'}]};
+function thumb(a){const el=$('thumb');
+ if(a==='press'){el.classList.add('press');return;}if(a==='lift'){el.classList.remove('press');return;}
+ if(el.classList.contains('press'))return;el.animate(THUMB_MOVE[a],{duration:a==='tap'?220:280,easing:'ease-out'});}
+function demoScene(i){const sc=TUT_SCENES[i];tut.i=i;tut.sc=sc;
+ const all=chartFrom({notes:sc.notes,holds:sc.holds||[]});notes=all.filter(n=>!n.hold);holds=all.filter(n=>n.hold);
+ buildMax=[0,1].map(k=>Math.max(1,notes.filter(n=>n.sec==='build'&&n.k===k).length));lane=1;
+ $('tutDots').innerHTML=TUT_SCENES.map((_,j)=>'<i'+(j===i?' class="on"':'')+'></i>').join('');
+ $('tutH').textContent=sc.h;$('tutP').textContent=sc.p;$('tutNext').textContent=i<TUT_SCENES.length-1?'つぎへ':tut.after==='select'?'街区をえらぶ':'おわる';
+ $('tutPrev').classList.toggle('hide',i===0);demoLoop();}
+function demoLoop(){const sc=tut.sc;seekTo(sc.from);$('thumb').classList.remove('press');lane=1;laneFrom=1;
+ if(sc.color){buildStock=buildMax.slice();released=[true,true];districtSat=[1,1];worldSat=targetSat(sc.from*BAR);}}
+function startTutorial(after){tut={i:0,after};MODE='demo';start(SONGS.find(s=>s.id===TUT_SONG)||SONGS[0]);$('tut').classList.remove('hide');demoScene(0);}
+function endTutorial(){if(!tut)return;const after=tut.after;tut=null;$('tut').classList.add('hide');quitSong();MODE='play';
+ try{localStorage.setItem(TUT_KEY,'1');}catch(e){}
+ if(after==='select')openSelect();else $('title').classList.remove('hide');}
+$('tutNext').addEventListener('click',()=>{if(!tut)return;if(tut.i<TUT_SCENES.length-1)demoScene(tut.i+1);else endTutorial();});
+$('tutPrev').addEventListener('click',()=>{if(tut&&tut.i>0)demoScene(tut.i-1);});
+$('tutSkip').addEventListener('click',endTutorial);
+$('howBtn').addEventListener('click',()=>startTutorial('title'));
 applySong(SONGS[0]);
 requestAnimationFrame(frame);
-window.__dbg={SONGS,start,get kime(){return kime},get songLen(){return SONG_LEN},get bar(){return BAR},get notes(){return notes},get holds(){return holds},now,get districtSat(){return districtSat},onPress,onRelease,onFlick,get lane(){return lane},set ending(e){ENDING=e},set keyup(v){KEYUP=v},set fromLast(v){FROM_LAST=v},set design(d){HERO_DESIGN=d},seekTo,set mode(m){MODE=m},get mode(){return MODE}};
+document.querySelector('#title .tag').textContent=(DEV?'試作 ':'')+'ver'+VERSION;
+if(DEV||window.IRO_TEST)window.__dbg={SONGS,start,get kime(){return kime},get songLen(){return SONG_LEN},get bar(){return BAR},get notes(){return notes},get holds(){return holds},now,get districtSat(){return districtSat},onPress,onRelease,onFlick,get lane(){return lane},set ending(e){ENDING=e},set keyup(v){KEYUP=v},set fromLast(v){FROM_LAST=v},set design(d){HERO_DESIGN=d},seekTo,set mode(m){MODE=m},get mode(){return MODE}};

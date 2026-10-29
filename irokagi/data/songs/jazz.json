@@ -13,6 +13,8 @@
  "genre": "ジャズ",
  "bpm": 152,
  "diff": 3,
+ "normal": 4,
+ "hard": 8,
  "swing": 0,
  "swing8": 0.67,
  "kit": "jazz",

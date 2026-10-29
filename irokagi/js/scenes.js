@@ -29,8 +29,12 @@ function farCity(dpx,ws,hmin,hmax,par){const fo=dpx*(par||0.35);g.fillStyle=FAR(
 function windows(b,x,y0,y1,s,on,p,dx,dy,ww,wh,k){dx=dx||6;dy=dy||7;ww=ww||3;wh=wh||4;
  for(let ry=y0,r=0;ry<y1;ry+=dy,r++)for(let cx=x+3,c=0;cx<x+b.w-ww-1;cx+=dx,c++){const lit=hash(b.id,r,c)<p;
   g.fillStyle=lit?mix(P.winOnG,on,s*(k||1)):mix(P.winOffG,P.winOffC,s);g.fillRect(cx,ry,ww,wh);}}
+// the posts under the upper lane stand one per beat, right where an on-beat enemy meets the blade; the bar's first beat gets a wider post
+function beatPosts(dpx,ws,y0){const bp=B*SPEED,o=dpx-(HERO_X+15);
+ for(let i=Math.floor(o/bp)-1;i<=Math.floor((o+W)/bp)+1;i++){if(i<0)continue;const x=Math.round(i*bp-o),bar=i%4===0;
+  R(x-(bar?2:1),y0,bar?4:2,LANE_Y[1]-y0,mix(hx(bar?'#5d5f66':'#47494f'),P.railC,ws*(bar?0.5:0.3)));}}
 function defRail(dpx,ws){g.fillStyle=mix(P.railG,P.bldC,ws*0.6);g.fillRect(0,LANE_Y[0],W,5);
- for(let i=Math.floor(dpx/48)-1;i<Math.floor(dpx/48)+5;i++){const x=Math.round(i*48-dpx);g.fillRect(x+20,LANE_Y[0]+5,4,LANE_Y[1]-LANE_Y[0]-5);}
+ beatPosts(dpx,ws,LANE_Y[0]+5);
  g.fillStyle=mix(P.railG,P.railC,ws);g.fillRect(0,LANE_Y[0],W,1);}
 function defRoad(dpx,ws){g.fillStyle=mix(P.roadG,P.roadC,ws);g.fillRect(-4,LANE_Y[1],W+8,ROAD_END-LANE_Y[1]);
  g.fillStyle=mix(P.lineG,P.lineC,ws);g.fillRect(0,LANE_Y[1],W,1);
@@ -132,7 +136,7 @@ const SCENES={
    for(let k=0;k<b.w-8;k+=5)R(x+4+k,b.top+18,3,2,gc(hash(b.id,k,2)<0.5?P.signA:P.winA,s,0.7));},
   rail(dpx,ws){const c=mix(hx('#3a3b40'),P.bldC,ws*0.6);R(0,LANE_Y[0],W,4,c);for(let x=-((dpx|0)%3);x<W;x+=3)R(x,LANE_Y[0]+1,1,2,shadeOf(ws,0.5));
    every(dpx,1,16,(x)=>{R(x,LANE_Y[0]-7,1,7,c);});R(0,LANE_Y[0]-7,W,1,c);
-   every(dpx,1,48,(x)=>{R(x+20,LANE_Y[0]+4,3,LANE_Y[1]-LANE_Y[0]-4,c);});R(0,LANE_Y[0],W,1,mix(P.railG,P.railC,ws));},
+   beatPosts(dpx,ws,LANE_Y[0]+4);R(0,LANE_Y[0],W,1,mix(P.railG,P.railC,ws));},
   road(dpx,ws){g.fillStyle=mix(P.roadG,P.roadC,ws);g.fillRect(-4,LANE_Y[1],W+8,ROAD_END-LANE_Y[1]);
    for(let x=-((dpx|0)%4);x<W;x+=4)R(x,LANE_Y[1]+5,1,ROAD_END-LANE_Y[1]-5,shadeOf(ws,0.55));
    for(let x=-((dpx|0)%8)-8;x<W;x+=8){R(x,LANE_Y[1],4,3,gc(hx('#ffd23d'),ws,0.75));R(x+4,LANE_Y[1],4,3,'#101012');}}},
@@ -198,7 +202,7 @@ const SCENES={
      R(xx,yy+1,w,h-2,'#0a0a0c');R(xx+1,yy,w-2,h,'#0a0a0c');R(xx+1,yy+1,w-2,h-2,gc(c,s,k));R(xx+2,yy+2,1,2,gc(hx('#ffffff'),s,k));
      if(hash(b.id,i,6)<0.5)R(xx+3,yy+h,1,3+hash(b.id,i,7)*4,gc(c,s,k));}};
    tag(b.top,16,0.72);if(b.lo)tag(130,12,0.5);},
-  rail(dpx,ws){const c=mix(hx('#3a3b40'),P.bldC,ws*0.6);R(0,LANE_Y[0],W,5,c);R(0,LANE_Y[0]+5,W,1,shadeOf(ws,0.5));R(0,LANE_Y[0],W,1,mix(P.railG,P.railC,ws));}},
+  rail(dpx,ws){const c=mix(hx('#3a3b40'),P.bldC,ws*0.6);R(0,LANE_Y[0],W,5,c);R(0,LANE_Y[0]+5,W,1,shadeOf(ws,0.5));beatPosts(dpx,ws,LANE_Y[0]+6);R(0,LANE_Y[0],W,1,mix(P.railG,P.railC,ws));}},
 
  // 真夜中の喫茶街: low brick cafés, warm windows, street lamps and the moon
  jazz:{
@@ -231,7 +235,7 @@ const SCENES={
    for(let i=0;i<b.ln;i++){const lx=x+4+i*Math.floor((b.w-10)/Math.max(1,b.ln-1)),ly=137;g.globalAlpha=0.12+0.14*s;disc(lx+2,ly+4,6,gc(P.signA,s));g.globalAlpha=1;
     R(lx+2,ly-2,1,2,dark);R(lx,ly,5,1,'#141414');R(lx,ly+1,5,6,mix(hx('#6a6b70'),P.signA,s));R(lx+1,ly+2,3,4,mix(hx('#8a8b90'),P.winA,s));R(lx,ly+7,5,1,'#141414');}},
   rail(dpx,ws){const c=mix(hx('#3a3836'),hx('#4a3020'),ws),red=gc(P.signA,ws,0.7);R(0,LANE_Y[0],W,5,c);R(0,LANE_Y[0]-6,W,2,red);
-   every(dpx,1,14,(x)=>{R(x,LANE_Y[0]-6,2,6,red);});every(dpx,1,56,(x)=>{R(x,LANE_Y[0]-8,2,2,mix(hx('#5a5b60'),hx('#d8b860'),ws));R(x+24,LANE_Y[0]+5,3,LANE_Y[1]-LANE_Y[0]-5,c);});R(0,LANE_Y[0],W,1,shadeOf(ws,1.4));},
+   every(dpx,1,14,(x)=>{R(x,LANE_Y[0]-6,2,6,red);});every(dpx,1,56,(x)=>{R(x,LANE_Y[0]-8,2,2,mix(hx('#5a5b60'),hx('#d8b860'),ws));});beatPosts(dpx,ws,LANE_Y[0]+5);R(0,LANE_Y[0],W,1,shadeOf(ws,1.4));},
   road(dpx,ws){g.fillStyle=mix(P.roadG,P.roadC,ws);g.fillRect(-4,LANE_Y[1],W+8,ROAD_END-LANE_Y[1]);
    for(let r=0,y=LANE_Y[1]+2;y<ROAD_END;y+=5,r++){R(0,y,W,1,shadeOf(ws,0.45));for(let x=-((dpx|0)%10)+(r%2)*5;x<W;x+=10)R(x,y,1,5,shadeOf(ws,0.45));}
    g.fillStyle=mix(P.lineG,P.lineC,ws*0.6);g.fillRect(0,LANE_Y[1],W,1);}},

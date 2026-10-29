@@ -12,6 +12,8 @@
  "genre": "シンセウェーブ",
  "bpm": 128,
  "diff": 1,
+ "normal": 1,
+ "hard": 5,
  "swing": 0,
  "kit": "clean",
  "lead": "piano",

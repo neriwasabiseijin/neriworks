@@ -13,6 +13,8 @@
  "genre": "ヒップホップ",
  "bpm": 140,
  "diff": 2,
+ "normal": 3,
+ "hard": 7,
  "swing": 0,
  "kit": "trap",
  "lead": "lofi",

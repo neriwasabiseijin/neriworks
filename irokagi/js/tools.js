@@ -12,12 +12,31 @@ function pickSong(sg){if(TOOL==='listen')startListen(sg,0);else if(TOOL==='edit'
 function startListen(sg,bar){MODE='listen';start(sg);if(bar>0)seekTo(bar);$('listen').classList.remove('hide');$('lsEd').classList.toggle('hide',!fromEditor);
  $('lsSeek').max=TOTAL_BARS-1;$('lsName').textContent=SONG.name;$('lsPause').textContent='一時停止';lsLabel(bar);}
 function lsLabel(bar){const si=secAt(bar);$('lsBar').textContent=(bar+1)+' / '+TOTAL_BARS+'小節　'+SEC_JA[SECTIONS[si][0]];if(!lsDrag)$('lsSeek').value=bar;}
-function stopTools(){if(A){if(A.state==='suspended')A.resume();resetBuses();}stopAmbience();running=false;ended=true;MODE='play';
+function stopTools(){recCancel();if(A){if(A.state==='suspended')A.resume();resetBuses();}stopAmbience();running=false;ended=true;MODE='play';
  $('listen').classList.add('hide');$('edBack').classList.add('hide');}
-function toolsEnded(){if(MODE==='listen')$('lsPause').textContent='はじめから';}
+function toolsEnded(){if(MODE==='listen')$('lsPause').textContent='はじめから';if(lsRec)recDone();}
+// Saving a song as a sound file: the band (not the cut sounds) is recorded while the song plays once from the top to its last ring.
+let lsRec=null;
+$('lsRec').addEventListener('click',()=>{if(lsRec){recCancel();return;}
+ if(!window.MediaRecorder){$('lsRec').textContent='この端末では保存できません';return;}
+ if(A.state==='suspended')A.resume();
+ const dest=A.createMediaStreamDestination();bandOut.connect(dest);
+ const type=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t));
+ const r=new MediaRecorder(dest.stream,type?{mimeType:type,audioBitsPerSecond:192000}:undefined),chunks=[];
+ r.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+ lsRec={r,dest,chunks,keep:false};
+ seekTo(0);$('lsPause').textContent='一時停止';r.start(1000);$('lsRec').textContent='録音中（押すとやめる）';});
+function recStop(keep){const R=lsRec;lsRec=null;R.keep=keep;
+ R.r.onstop=()=>{try{bandOut.disconnect(R.dest);}catch(e){}if(R.keep)recSave(new Blob(R.chunks,{type:R.r.mimeType}),/mp4/.test(R.r.mimeType)?'mp4':'webm');};R.r.stop();
+ $('lsRec').textContent='音声で保存';}
+function recCancel(){if(lsRec)recStop(false);}
+function recDone(){recStop(true);}
+async function recSave(blob,ext){const name='irokagi-'+SONG.id+'.'+ext;// iPhones record mp4, others webm
+ try{const dl=window.claude&&await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});return;}}catch(e){if(e&&e.code==='declined')return;}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);}
 $('lsSeek').addEventListener('input',()=>{lsDrag=true;lsLabel(+$('lsSeek').value);});
-$('lsSeek').addEventListener('change',()=>{lsDrag=false;seekTo(+$('lsSeek').value);$('lsPause').textContent='一時停止';});
-$('lsPause').addEventListener('click',()=>{if(!running){seekTo(0);$('lsPause').textContent='一時停止';return;}
+$('lsSeek').addEventListener('change',()=>{lsDrag=false;recCancel();seekTo(+$('lsSeek').value);$('lsPause').textContent='一時停止';});
+$('lsPause').addEventListener('click',()=>{recCancel();if(!running){seekTo(0);$('lsPause').textContent='一時停止';return;}
  if(A.state==='running'){A.suspend();$('lsPause').textContent='再生';}else{A.resume();$('lsPause').textContent='一時停止';}});
 $('lsBack').addEventListener('click',()=>{stopTools();fromEditor=false;if(fromSongIO)openSongIO(SONG);else openSelect();});
 $('lsEd').addEventListener('click',()=>{stopTools();openEditor(SONG);});
@@ -26,63 +45,71 @@ $('toEdBtn').addEventListener('click',()=>{stopTools();$('result').classList.add
 setInterval(()=>{if(MODE==='listen'&&running&&!lsDrag)lsLabel(Math.min(TOTAL_BARS-1,curBar()));},200);
 
 // ---------- chart editor ----------
-// Time runs downward, one row per 16th (or per triplet). Columns: 高 (jump), 上段, 中 (between lanes), 下段, 低 (slide).
+// Laid out like the play screen: time runs to the right, one column per 16th (or per triplet).
+// Rows from the top: 高 (jump), 上段, 中 (between lanes), 下段, 低 (slide).
 // Tap an empty spot to place, tap a note to remove. A 中 note is cut by a lane change either way. Tap a bar number to start from there.
 const ED={data:null,scroll:0,snap:4,sel:0,cv:null,x:null,w:0,h:0,pd:null};
 const COLS=[['high','高'],['b0','上段'],['mid','中'],['b1','下段'],['low','低']];
-const GUT=46,HEAD=22,BEAT_H=44;
+const LBL=38,TOP=36,BEAT_W=44;
 function openEditor(sg){fromEditor=true;applySong(sg);$('select').classList.add('hide');$('result').classList.add('hide');$('editor').classList.remove('hide');
- ED.data=loadChart(SONG.id)||fileChart(SONG.id)||chartData(baseChart());$('edName').textContent=SONG.name;$('edSnap').textContent=ED.snap===4?'16分':'3連';
- edSize();edDraw();}
+ ED.data=loadChart(SONG.id)||JSON.parse(JSON.stringify(fileChart(SONG.id)||chartData(baseChart())));$('edName').textContent=SONG.name+' '+DIFF_JA[DIFF];$('edSnap').textContent=ED.snap===4?'16分':'3連';
+ edSize();edDraw();}// ED.data is a copy: edits must not touch the file chart
 function edSize(){const c=$('edCv'),r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);ED.w=r.width;ED.h=r.height;ED.x=c.getContext('2d');ED.x.setTransform(d,0,0,d,0,0);}
-addEventListener('resize',()=>{if(!$('editor').classList.contains('hide')){edSize();edDraw();}});
-const edY=beats=>HEAD+beats*BEAT_H-ED.scroll;
-const colW=()=>(ED.w-GUT)/COLS.length;
+addEventListener('resize',()=>{if(!$('editor').classList.contains('hide')){edSize();ED.scroll=Math.min(ED.scroll,edMaxScroll());edDraw();}});
+const edX=beats=>LBL+beats*BEAT_W-ED.scroll;
+const rowH=()=>Math.min(64,(ED.h-TOP-8)/COLS.length);
+const rowY=r=>TOP+r*rowH();
 function colOf(n){return n[2]==='high'?0:n[2]==='low'?4:n[2]==='mid'?2:n[3]===0?1:3;}
 function noteTime(n){return n[4]?n[0]*BAR+n[1]*B:beatT(n[0],n[1]);}
-function edSave(){try{localStorage.setItem(chartKey(SONG.id),JSON.stringify(ED.data));}catch(e){}}
+// an edit that matches the song's own chart is no edit: it is dropped, so 「編集済み」 clears and later file updates show
+const chartSig=d=>JSON.stringify([d.notes.map(n=>[n[0],+(+n[1]).toFixed(4),n[2],n[3]]).sort((a,b)=>a[0]*4+a[1]-b[0]*4-b[1]||(a[2]<b[2]?-1:1)),d.holds.map(h=>[h[0],h[1],h[2]||''])]);
+function edSave(){try{const base=fileChart(SONG.id)||chartData(baseChart());
+ if(chartSig(ED.data)===chartSig(base))localStorage.removeItem(chartKey(SONG.id));else localStorage.setItem(chartKey(SONG.id),JSON.stringify(ED.data));}catch(e){}}
 // what a note needs to be playable: room after the previous one, and a lane change in time for jumps, slides and pylons
 function edWarnings(){const ns=ED.data.notes.slice().sort((a,b)=>noteTime(a)-noteTime(b));const bad=new Map();let prev=null,ln=1;
  for(const n of ns){const t=noteTime(n);const need=n[2]==='high'?0:n[2]==='low'?1:null;
   if(prev!=null&&t-prev<MIN_GAP-1e-6)bad.set(n,'近すぎ');else if(need!=null&&need!==ln&&prev!=null&&t-prev<0.25)bad.set(n,'段の移動が間に合わない');
   prev=t;ln=n[2]==='high'?0:n[2]==='low'?1:n[2]==='mid'?1-ln:n[3];}
  return bad;}
-function edDraw(){const x=ED.x,w=ED.w,h=ED.h,cw=colW();x.fillStyle='#08080b';x.fillRect(0,0,w,h);
- const b0=Math.max(0,Math.floor((ED.scroll)/BEAT_H)-1),b1=Math.ceil((ED.scroll+h)/BEAT_H)+1;
+function edDraw(){const x=ED.x,w=ED.w,h=ED.h,rh=rowH(),y0=TOP,y1=rowY(COLS.length);x.fillStyle='#08080b';x.fillRect(0,0,w,h);
+ const b0=Math.max(0,Math.floor(ED.scroll/BEAT_W)-1),b1=Math.ceil((ED.scroll+w)/BEAT_W)+1;
  // section bands and grid
- for(let bt=b0;bt<=b1&&bt<TOTAL_BARS*4;bt++){const y=edY(bt),bar=Math.floor(bt/4),si=secAt(bar),type=SECTIONS[si][0];
-  x.fillStyle={intro:'#101016',build:'#14101a',drop:'#1a0e16',break:'#0e1416',outro:'#16140e'}[type];x.fillRect(GUT,y,w-GUT,BEAT_H);
-  const div=ED.snap;for(let k=1;k<div;k++){x.fillStyle='#1d1e24';x.fillRect(GUT,Math.round(y+k*BEAT_H/div),w-GUT,1);}
-  x.fillStyle=bt%4===0?'#5a5c66':'#2e3038';x.fillRect(bt%4===0?0:GUT,Math.round(y),bt%4===0?w:w-GUT,bt%4===0?2:1);
-  if(bt%4===0){x.fillStyle=bar===ED.sel?'#39f0ff':'#cfd0d4';x.font='13px DotGothic16, monospace';x.textAlign='left';x.fillText(String(bar+1),6,y+16);
-   x.fillStyle='#8a8c93';x.font='10px DotGothic16, monospace';const rel=bar-secStart[si];if(rel===0)x.fillText(SEC_JA[type],6,y+30);
-   if(bar===ED.sel){x.fillStyle='#39f0ff';x.fillRect(0,y,3,BEAT_H*4);}}}
- for(let c=1;c<COLS.length;c++){x.fillStyle='#24252c';x.fillRect(GUT+c*cw,0,1,h);}
+ for(let bt=b0;bt<=b1&&bt<TOTAL_BARS*4;bt++){const X=edX(bt),bar=Math.floor(bt/4),si=secAt(bar),type=SECTIONS[si][0];
+  x.fillStyle={intro:'#101016',build:'#14101a',drop:'#1a0e16',break:'#0e1416',outro:'#16140e'}[type];x.fillRect(X,y0,BEAT_W,y1-y0);
+  const div=ED.snap;for(let k=1;k<div;k++){x.fillStyle='#1d1e24';x.fillRect(Math.round(X+k*BEAT_W/div),y0,1,y1-y0);}
+  x.fillStyle=bt%4===0?'#5a5c66':'#2e3038';x.fillRect(Math.round(X),bt%4===0?0:y0,bt%4===0?2:1,bt%4===0?y1:y1-y0);
+  if(bt%4===0){x.fillStyle=bar===ED.sel?'#39f0ff':'#cfd0d4';x.font='13px DotGothic16, monospace';x.textAlign='left';x.fillText(String(bar+1),X+5,15);
+   x.fillStyle='#8a8c93';x.font='10px DotGothic16, monospace';const rel=bar-secStart[si];if(rel===0)x.fillText(SEC_JA[type],X+5,29);
+   if(bar===ED.sel){x.fillStyle='#39f0ff';x.fillRect(X,0,BEAT_W*4,3);}}}
+ for(let r=1;r<COLS.length;r++){x.fillStyle='#24252c';x.fillRect(0,Math.round(rowY(r)),w,1);}
  // holds
- for(const[bar,ln]of ED.data.holds){const y=edY(bar*4),cx=GUT+(ln===0?1:3)*cw;x.globalAlpha=0.35;x.fillStyle='#ff3d8b';x.fillRect(cx+4,y,cw-8,BEAT_H*4);x.globalAlpha=1;
-  x.fillStyle='#ffffff';x.font='11px DotGothic16, monospace';x.textAlign='center';x.fillText('光の帯',cx+cw/2,y+16);}
+ for(const[bar,ln,kind]of ED.data.holds){const X=edX(bar*4),ry=rowY(ln===0?1:3);x.globalAlpha=0.35;x.fillStyle=kind==='mash'?'#ffb54a':'#ff3d8b';x.fillRect(X,ry+4,BEAT_W*4,rh-8);x.globalAlpha=1;
+  x.fillStyle='#ffffff';x.font='11px DotGothic16, monospace';x.textAlign='left';x.fillText(kind==='mash'?'連打':'光の帯',X+6,ry+rh/2+4);}
  // notes
- const bad=edWarnings();
- for(const n of ED.data.notes){const bt=n[0]*4+n[1];if(bt<b0-1||bt>b1+1)continue;const y=edY(bt),c=colOf(n),cx=GUT+c*cw+cw/2;
+ const bad=edWarnings(),s=Math.min(1,rh/44);
+ for(const n of ED.data.notes){const bt=n[0]*4+n[1];if(bt<b0-1||bt>b1+1)continue;const cx=edX(bt),cy=rowY(colOf(n))+rh/2;
   const col=n[2]==='body'?(n[3]===0?'#39f0ff':'#ff3d8b'):n[2]==='mid'?'#ffb54a':'#a6ff5a';x.fillStyle=col;
-  if(n[2]==='body'){x.fillRect(cx-cw*0.34,y-4,cw*0.68,8);}
-  else if(n[2]==='mid'){x.beginPath();x.moveTo(cx,y-7);x.lineTo(cx+6,y);x.lineTo(cx,y+7);x.lineTo(cx-6,y);x.closePath();x.fill();}
-  else{x.beginPath();const up=n[2]==='high';x.moveTo(cx,up?y-7:y+7);x.lineTo(cx-7,up?y+5:y-5);x.lineTo(cx+7,up?y+5:y-5);x.closePath();x.fill();}
-  if(bad.has(n)){x.strokeStyle='#ff4040';x.lineWidth=2;x.strokeRect(cx-cw*0.4,y-7,cw*0.8,14);}}
- // header
- x.fillStyle='#000';x.fillRect(0,0,w,HEAD);x.fillStyle='#cfd0d4';x.font='12px DotGothic16, monospace';x.textAlign='center';
- x.fillText('小節',GUT/2,15);COLS.forEach(([,l],i)=>x.fillText(l,GUT+i*cw+cw/2,15));
+  if(n[2]==='body'){x.fillRect(cx-4,cy-rh*0.34,8,rh*0.68);}
+  else if(n[2]==='mid'){x.beginPath();x.moveTo(cx,cy-7*s);x.lineTo(cx+6,cy);x.lineTo(cx,cy+7*s);x.lineTo(cx-6,cy);x.closePath();x.fill();}
+  else{x.beginPath();const up=n[2]==='high';x.moveTo(cx,up?cy-7:cy+7);x.lineTo(cx-7,up?cy+5:cy-5);x.lineTo(cx+7,up?cy+5:cy-5);x.closePath();x.fill();}
+  if(bad.has(n)){x.strokeStyle='#ff4040';x.lineWidth=2;x.strokeRect(cx-7,cy-rh*0.4,14,rh*0.8);}}
+ // row names
+ x.fillStyle='#000';x.fillRect(0,y0,LBL,y1-y0);x.fillStyle='#cfd0d4';x.font='12px DotGothic16, monospace';x.textAlign='center';
+ COLS.forEach(([,l],i)=>x.fillText(l,LBL/2,rowY(i)+rh/2+4));
  $('edInfo').textContent=bad.size?'赤枠：'+[...new Set(bad.values())].join('・'):'';}
-function edMaxScroll(){return Math.max(0,TOTAL_BARS*4*BEAT_H+HEAD+40-ED.h);}
+function edMaxScroll(){return Math.max(0,TOTAL_BARS*4*BEAT_W+LBL+40-ED.w);}
 $('edCv').addEventListener('pointerdown',e=>{ED.pd={id:e.pointerId,y:e.clientY,x:e.clientX,s:ED.scroll,moved:false};$('edCv').setPointerCapture(e.pointerId);});
-$('edCv').addEventListener('pointermove',e=>{const p=ED.pd;if(!p||p.id!==e.pointerId)return;const dy=e.clientY-p.y;if(Math.abs(dy)>6)p.moved=true;
- if(p.moved){ED.scroll=Math.max(0,Math.min(edMaxScroll(),p.s-dy));edDraw();}});
+$('edCv').addEventListener('pointermove',e=>{const p=ED.pd;if(!p||p.id!==e.pointerId)return;const dx=e.clientX-p.x;if(Math.abs(dx)>6)p.moved=true;
+ if(p.moved){ED.scroll=Math.max(0,Math.min(edMaxScroll(),p.s-dx));edDraw();}});
 $('edCv').addEventListener('pointerup',e=>{const p=ED.pd;ED.pd=null;if(!p||p.moved)return;const r=$('edCv').getBoundingClientRect();edTap(e.clientX-r.left,e.clientY-r.top);});
-$('edCv').addEventListener('wheel',e=>{ED.scroll=Math.max(0,Math.min(edMaxScroll(),ED.scroll+e.deltaY));edDraw();e.preventDefault();},{passive:false});
-function edTap(px,py){if(py<HEAD)return;const beats=(py-HEAD+ED.scroll)/BEAT_H;
- if(px<GUT){ED.sel=Math.max(0,Math.min(TOTAL_BARS-1,Math.floor(beats/4)));edDraw();return;}
- const c=Math.min(COLS.length-1,Math.floor((px-GUT)/colW()));
- // an existing note in this column near the tap
+$('edCv').addEventListener('wheel',e=>{ED.scroll=Math.max(0,Math.min(edMaxScroll(),ED.scroll+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)));edDraw();e.preventDefault();},{passive:false});
+function edTap(px,py){if(px<LBL)return;const beats=(px-LBL+ED.scroll)/BEAT_W;
+ if(py<TOP){ED.sel=Math.max(0,Math.min(TOTAL_BARS-1,Math.floor(beats/4)));edDraw();return;}
+ const c=Math.floor((py-TOP)/rowH());if(c>=COLS.length)return;
+ // tapping a hold switches it between holding the key (光の帯) and forcing the lock (連打)
+ const hd=ED.data.holds.find(([bar,ln])=>Math.floor(beats/4)===bar&&c===(ln===0?1:3));
+ if(hd){if(hd[2]==='mash')hd.length=2;else hd[2]='mash';edSave();edDraw();return;}
+ // an existing note in this row near the tap
  const near=ED.data.notes.filter(n=>colOf(n)===c).map(n=>[n,Math.abs(n[0]*4+n[1]-beats)]).filter(v=>v[1]<0.6/ED.snap).sort((a,b)=>a[1]-b[1])[0];
  if(near)ED.data.notes.splice(ED.data.notes.indexOf(near[0]),1);
  else{const q=Math.round(beats*ED.snap)/ED.snap,bar=Math.floor(q/4+1e-9),b=+(q-bar*4).toFixed(4);if(bar<0||bar>=TOTAL_BARS)return;
@@ -92,12 +119,16 @@ function edTap(px,py){if(py<HEAD)return;const beats=(py-HEAD+ED.scroll)/BEAT_H;
 $('edSnap').addEventListener('click',()=>{ED.snap=ED.snap===4?3:4;$('edSnap').textContent=ED.snap===4?'16分':'3連';edDraw();});
 $('edListen').addEventListener('click',()=>{edSave();$('editor').classList.add('hide');startListen(SONG,ED.sel);});
 $('edPlay').addEventListener('click',()=>{edSave();$('editor').classList.add('hide');MODE='play';start(SONG);if(ED.sel>0)seekTo(ED.sel);$('edBack').classList.remove('hide');});
-$('edReset').addEventListener('click',()=>{if(!confirm('この曲の編集を消して、元の譜面に戻しますか？'))return;try{localStorage.removeItem(chartKey(SONG.id));}catch(e){}ED.data=fileChart(SONG.id)||chartData(baseChart());edDraw();});
+// confirm() is blocked inside the published page's frame (it always answers no), so a reset asks for a second tap instead
+function twoTap(btn,ask,fn){let armed=0;const label=btn.textContent;
+ btn.addEventListener('click',()=>{if(Date.now()-armed<3000){armed=0;btn.textContent=label;fn();return;}
+  armed=Date.now();btn.textContent=ask;setTimeout(()=>{if(armed&&Date.now()-armed>=3000){armed=0;btn.textContent=label;}},3100);});}
+twoTap($('edReset'),'もう一度押すと戻す',()=>{try{localStorage.removeItem(chartKey(SONG.id));}catch(e){}ED.data=JSON.parse(JSON.stringify(fileChart(SONG.id)||chartData(baseChart())));edDraw();});
 $('edExport').addEventListener('click',()=>{const t=$('edText');t.value=fmtChart(ED.data);$('edIO').classList.remove('hide');$('edLoad').classList.add('hide');$('edIOMsg').textContent='この文字をコピーして送ってください。';t.select();
  try{navigator.clipboard.writeText(t.value).then(()=>{$('edIOMsg').textContent='コピーしました。このまま送ってください。';},()=>{});}catch(e){}});
 $('edImport').addEventListener('click',()=>{$('edText').value='';$('edIO').classList.remove('hide');$('edLoad').classList.remove('hide');$('edIOMsg').textContent='書き出した文字を貼りつけてください。';});
 $('edLoad').addEventListener('click',()=>{try{const d=JSON.parse($('edText').value);if(!Array.isArray(d.notes)||!Array.isArray(d.holds))throw 0;
-  if(d.song&&d.song!==SONG.id){const sg=SONGS.find(s=>s.id===d.song);if(sg)applySong(sg);$('edName').textContent=SONG.name;}
+  if(d.song&&d.song!==SONG.id){const sg=SONGS.find(s=>s.id===d.song);if(sg)applySong(sg);$('edName').textContent=SONG.name+' '+DIFF_JA[DIFF];}
   ED.data={song:SONG.id,notes:d.notes,holds:d.holds};edSave();$('edIO').classList.add('hide');edDraw();}catch(e){$('edIOMsg').textContent='読み込めませんでした。';}});
 $('edIOClose').addEventListener('click',()=>$('edIO').classList.add('hide'));
 $('edClose').addEventListener('click',()=>{$('editor').classList.add('hide');fromEditor=false;openSelect();});
@@ -127,7 +158,7 @@ $('sgApply').addEventListener('click',()=>{let p;
  $('sgMsg').textContent='読み込みました。「▶ 試聴」で聴けます。'+(i<0?'新しい曲として一覧の最後に足しました。':'');});
 $('sgListen').addEventListener('click',()=>{$('songIO').classList.add('hide');startListen(SONG,0);});
 $('sgCopy').addEventListener('click',()=>{const t=$('sgText');t.select();try{navigator.clipboard.writeText(t.value).then(()=>{$('sgMsg').textContent='コピーしました。';},()=>{});}catch(e){}});
-$('sgReset').addEventListener('click',()=>{if(!confirm('貼りつけたデータを消して、ファイルの曲に戻しますか？'))return;
+twoTap($('sgReset'),'もう一度押すと戻す',()=>{
  const id=SONG.id,loc=localSongs();delete loc[id];saveLocalSongs(loc);const f=FILE_SONGS.find(s=>s.id===id),i=SONGS.findIndex(s=>s.id===id);
  if(f){SONGS[i]=f;openSongIO(f);}else{SONGS.splice(i,1);closeSongIO();openSelect();}});
 $('sgClose').addEventListener('click',()=>{closeSongIO();openSelect();});

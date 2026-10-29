@@ -1,7 +1,7 @@
 {
  "id": "rain",
- "lv": [6,-4.1,-5.2,-3.3,-3.9,-5.1,-2.1],
- "ending": "fade",
+ "lv": [9.8, -3.1, -4.2, -2.3, -2.9, -4.1, -1.1],
+ "ending": "cut",
  "keyup": false,
  "hits": [0,6,10],
  "stab": "epiano",
@@ -12,6 +12,8 @@
  "genre": "ドラムンベース",
  "bpm": 172,
  "diff": 2,
+ "normal": 3,
+ "hard": 7,
  "swing": 0,
  "kit": "break",
  "lead": "piano",

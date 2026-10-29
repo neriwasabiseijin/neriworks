@@ -13,6 +13,8 @@
  "genre": "テクノポップ",
  "bpm": 130,
  "diff": 1,
+ "normal": 2,
+ "hard": 5,
  "swing": 0,
  "kit": "pop",
  "lead": "square",
