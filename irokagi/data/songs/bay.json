@@ -12,6 +12,8 @@
  "genre": "ピアノハウス",
  "bpm": 128,
  "diff": 2,
+ "normal": 2,
+ "hard": 5,
  "swing": 0,
  "kit": "house",
  "lead": "piano",

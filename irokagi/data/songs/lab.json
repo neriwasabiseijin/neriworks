@@ -12,6 +12,8 @@
  "genre": "インダストリアル",
  "bpm": 140,
  "diff": 3,
+ "normal": 4,
+ "hard": 9,
  "swing": 0,
  "kit": "ind",
  "lead": "saw",

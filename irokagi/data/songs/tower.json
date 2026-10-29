@@ -12,6 +12,8 @@
  "genre": "トランス",
  "bpm": 138,
  "diff": 2,
+ "normal": 2,
+ "hard": 6,
  "swing": 0,
  "kit": "clean",
  "lead": "pluck",

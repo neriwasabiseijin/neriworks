@@ -13,6 +13,8 @@
  "genre": "和風ダンス",
  "bpm": 150,
  "diff": 3,
+ "normal": 4,
+ "hard": 9,
  "swing": 0,
  "kit": "taiko",
  "lead": "shaku",

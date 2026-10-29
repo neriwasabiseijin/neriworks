@@ -12,6 +12,8 @@
  "genre": "エレクトロ",
  "bpm": 128,
  "diff": 2,
+ "normal": 3,
+ "hard": 6,
  "swing": 0,
  "kit": "edm",
  "lead": "supersaw",

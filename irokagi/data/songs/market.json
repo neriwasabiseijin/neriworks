@@ -12,6 +12,8 @@
  "genre": "ファンク",
  "bpm": 132,
  "diff": 3,
+ "normal": 3,
+ "hard": 7,
  "swing": 0.18,
  "kit": "funk",
  "lead": "epiano",
