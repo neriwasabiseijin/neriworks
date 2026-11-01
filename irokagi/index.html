@@ -30,6 +30,8 @@ button:active{transform:translate(1px,1px)}
 button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;border:1px solid #555;box-shadow:none}
 .hide{display:none!important}
 #cal{background:#000e}
+#cal .hide{display:none}
+#cal.lock button{pointer-events:none}
 #calHit{min-height:3.2em}
 #calHit small{display:block;font-size:12px;color:var(--dim);margin-top:4px}
 #calVal{font-size:48px}
@@ -127,14 +129,14 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 </div>
 <div id="cal" class="ov hide">
   <div class="lbl" id="calLbl">タイミング調整</div>
-  <div class="big" id="calVal"></div>
-  <div class="det" id="calSub"></div>
   <div class="how" id="calMsg"></div>
+  <div class="big" id="calVal"></div>
   <div class="cmt" id="calHit"></div>
-  <div class="lsBtns"><button id="calMinus" class="sub">−10ms</button><button id="calPlus" class="sub">＋10ms</button></div>
-  <button id="calGo">測る</button>
+  <div class="lsBtns" id="calFine"><button id="calMinus" class="sub">−10ms</button><button id="calPlus" class="sub">＋10ms</button></div>
+  <button id="calYes">はい</button>
+  <button id="calBack" class="sub">いいえ</button>
+  <button id="calRetry" class="sub">やりなおす</button>
   <button id="calReset" class="sub">リセット</button>
-  <button id="calBack" class="sub">もどる</button>
 </div>
 <div id="select" class="ov hide">
   <div class="lbl">街区をえらぶ</div>
