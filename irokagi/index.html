@@ -67,10 +67,25 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
 .slbl{font-size:12px;color:var(--dim);letter-spacing:.3em;margin-bottom:-14px}
 .combo{font-size:18px;color:#e9e9ee}
 .combo b{font-size:26px;font-weight:normal}
-.combo .fc{display:block;font-size:30px;color:#fff;text-shadow:0 0 8px #39f0ff,0 0 16px #ff3d8b;letter-spacing:.08em;animation:fcPop .5s cubic-bezier(.2,1.6,.4,1) both}
-.combo .fc.clr{text-shadow:0 0 8px #39f0ff}
-.combo .nclr{display:block;font-size:14px;color:var(--dim);margin-bottom:4px}
-.combo .unl{display:block;font-size:14px;color:var(--cyan);margin-top:6px}
+#result .rv{opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s}
+#result .rv.on{opacity:1;transform:none}
+#result .rv.hide{display:none}
+.rLine{width:min(280px,70%);height:1px;background:linear-gradient(90deg,transparent,#666,transparent)}
+#rScore{display:flex;flex-direction:column;align-items:center;gap:14px}
+#rStamp{min-height:40px;display:flex;align-items:center;justify-content:center}
+#rStamp .fc{font-size:34px;color:#fff;letter-spacing:.1em;text-shadow:0 0 8px #39f0ff}
+#rStamp.on .fc{animation:fcPop .5s cubic-bezier(.2,1.6,.4,1) both}
+#rStamp .fc.pf{font-size:40px;background:linear-gradient(90deg,#ff3d8b,#ffe36a,#39f0ff,#ff3d8b);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 6px #ff3d8b88)}
+#rStamp.on .fc.pf{animation:fcPop .6s cubic-bezier(.2,1.6,.4,1) both,pfFlow 2.4s linear .6s infinite}
+#rStamp .nclr{font-size:14px;color:var(--dim)}
+#rCombo.on b{display:inline-block;animation:fcPop .35s cubic-bezier(.2,1.6,.4,1) both}
+#rUnl{font-size:15px;color:var(--cyan)}
+.rBtns{display:flex;flex-direction:column;align-items:center;gap:14px}
+#result .rBtns:not(.on){pointer-events:none}
+#rFlash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%,#ff3d8b66,#39f0ff33 40%,transparent 70%)}
+#rFlash.go{animation:rFlash 1.1s ease-out}
+@keyframes rFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+@keyframes pfFlow{to{background-position:300% 0}}
 @keyframes fcPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .lbl{font-size:13px;color:var(--dim);letter-spacing:.3em}
 .cmt{font-size:16px;color:#e9e9ee}
@@ -170,16 +185,22 @@ button.sub{font-size:15px;padding:7px 22px;background:transparent;color:#e6e6ea;
   <div id="edIO" class="hide"><div class="det" id="edIOMsg"></div><textarea id="edText"></textarea><div class="lsBtns"><button id="edLoad">読み込む</button><button id="edIOClose" class="sub">閉じる</button></div></div>
 </div>
 <div id="result" class="ov hide">
-  <div class="lbl" id="rLbl"></div>
-  <div class="slbl">スコア</div>
-  <div class="big" id="rSat">0</div>
-  <div class="combo" id="rCombo"></div>
-  <div class="det" id="rDet"></div>
-  <div class="cmt" id="rCmt"></div>
-  <button id="againBtn">もう一度</button>
-  <button id="shareBtn" class="sub">シェアする</button>
-  <button id="toSelBtn" class="sub">街区をえらぶ</button>
-  <button id="toEdBtn" class="sub hide">エディタへ</button>
+  <div class="cmt rv" id="rCmt"></div>
+  <div class="rLine rv"></div>
+  <div class="lbl rv" id="rLbl"></div>
+  <div class="rv" id="rStamp"></div>
+  <div class="rv" id="rScore"><div class="slbl">スコア</div><div class="big" id="rSat">0</div></div>
+  <div class="combo rv" id="rCombo"></div>
+  <div class="det rv" id="rDet"></div>
+  <div class="rLine rv" id="rLine2"></div>
+  <div class="rv" id="rUnl"></div>
+  <div class="rBtns rv" id="rBtns">
+    <button id="againBtn">もう一度</button>
+    <button id="shareBtn" class="sub">シェアする</button>
+    <button id="toSelBtn" class="sub">街区をえらぶ</button>
+    <button id="toEdBtn" class="sub hide">エディタへ</button>
+  </div>
+  <div id="rFlash"></div>
 </div>
 <button id="pauseBtn" type="button" class="hide" aria-label="一時停止"><svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg></button>
 <div id="pauseMenu" class="ov hide">
