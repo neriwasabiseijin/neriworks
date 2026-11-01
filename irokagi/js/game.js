@@ -629,38 +629,50 @@ const ms=v=>(v>0.0005?'+':v<-0.0005?'−':'')+Math.abs(Math.round(v*1000))+'ms';
 function saveLat(v){userLat=v==null?null:Math.round(Math.max(LAT_MIN,Math.min(LAT_MAX,v))*1000)/1000;
  try{if(userLat==null)localStorage.removeItem('iro-lat');else localStorage.setItem('iro-lat',String(userLat));}catch(e){}showLat();}
 function showLat(){$('latInfo').textContent=userLat!=null?'タイミング調整：'+ms(userLat):'音を出して遊んでください';
- if(!$('cal').classList.contains('hide')){$('calVal').textContent=ms(effLat());$('calSub').textContent=userLat!=null?'':'調整なし（端末の値のまま）';
-  $('calReset').classList.toggle('hide',userLat==null);}}
-showLat();
+ if(cal&&cal.step==='done')$('calVal').textContent=ms(effLat());}
+// The screen goes in steps, each with one thing to do: ask → tap eight times to the clicks → done (back, or once more).
+// From the title, the done step also keeps ticking, shows はやい/おそい for each tap and offers −/+ and リセット.
 let calTut=false;
-let cal=null;// {next: the next beat to schedule, beats: [times], mode: 'check'|'measure', taps}
-function calTick(){if(!cal)return;while(cal.next<A.currentTime+0.2){const bt=cal.next,i=cal.beats.length;cal.beats.push(bt);if(cal.beats.length>32)cal.beats.shift();
-  kick(bt,0.9,sfxBus);piano(bt,cal.n%4===0?69:64,0.2,0.12,sfxBus);cal.n++;cal.next+=CAL_B;}
- if(cal.mode==='measure'&&A.currentTime>cal.until){calCheck('うまく測れませんでした。もう一度どうぞ。');}}
-function calCheck(msg){cal.mode='check';cal.taps=[];cal.offs=[];
- $('calMsg').innerHTML=msg||(calTut?'イヤホンなどでは、音が少し遅れて聞こえます。<br>「はじめる」を押して、聞こえた音に合わせて<br>8回タップしてください。':'音に合わせてタップすると、ずれが出ます。<br>0に近くなるよう −／＋ で合わせてください。');$('calHit').textContent='';$('calGo').classList.remove('hide');showLat();}
-// after the tutorial it is one guided step: only 「はじめる」 (eight taps) and a way on; the numbers and −/+ wait on the title's button
-function openCal(mode){initAudio();calTut=mode==='tutorial';$('calLbl').textContent=calTut?'さいごに、音のずれを合わせます':'タイミング調整';
- $('calGo').textContent=calTut?'はじめる':'測る';$('calBack').textContent=calTut?'とばす':'もどる';$('calBack').classList.add('sub');$('cal').classList.toggle('tutMode',calTut);if(A.state==='suspended')A.resume();
+let cal=null;// {step: 'ask'|'measure'|'done', next: the next beat to schedule, beats: [times], taps, offs}
+showLat();
+function calTick(){if(!cal)return;
+ if(cal.step==='measure'||(cal.step==='done'&&!calTut))while(cal.next<A.currentTime+0.2){const bt=Math.max(cal.next,A.currentTime+0.05);cal.beats.push(bt);if(cal.beats.length>32)cal.beats.shift();
+  kick(bt,0.9,sfxBus);piano(bt,cal.n%4===0?69:64,0.2,0.12,sfxBus);cal.n++;cal.next=bt+CAL_B;}
+ else cal.next=A.currentTime+0.4;
+ if(cal.step==='measure'&&A.currentTime>cal.until)calStep('measure','うまく測れませんでした。<br>もう一度、聞こえた音に合わせて<br>画面を8回タップしてください。');}
+const calShow=(...ids)=>{for(const id of['calVal','calHit','calFine','calYes','calRetry','calBack','calReset'])$(id).classList.toggle('hide',!ids.includes(id));};
+const calMain=id=>{for(const x of['calYes','calRetry','calBack'])$(x).classList.toggle('sub',x!==id);};
+function calStep(step,msg){cal.step=step;cal.taps=[];cal.offs=[];$('calHit').textContent='';
+ if(step==='ask'){$('calMsg').innerHTML='イヤホンやスピーカーによっては、<br>音が少し遅れて聞こえることがあります。<br><br>ずれを調整しますか？';
+  $('calYes').textContent='はい';$('calBack').textContent='いいえ';calMain('calYes');
+  if(!calTut&&userLat!=null){$('calHit').innerHTML='<small>いまの調整 '+ms(userLat)+'</small>';calShow('calHit','calYes','calBack','calReset');}else calShow('calYes','calBack');}
+ else if(step==='measure'){$('calMsg').innerHTML=msg||'音に合わせて、<br>画面を8回タップしてください。';
+  cal.next=A.currentTime+0.4;cal.from=cal.next-CAL_B*0.5;cal.until=cal.next+CAL_B*16;$('calVal').textContent='0 / 8';calShow('calVal');}
+ // the buttons come up under a finger that may still be tapping the beat: they wait a moment before they take a tap
+ else{$('cal').classList.add('lock');setTimeout(()=>$('cal').classList.remove('lock'),800);$('calMsg').innerHTML=msg;$('calRetry').textContent='やりなおす';$('calBack').textContent=calTut?'つぎへ':'もどる';calMain('calBack');
+  if(calTut)calShow('calRetry','calBack');
+  else{cal.next=A.currentTime+0.4;$('calVal').textContent=ms(effLat());$('calHit').innerHTML='<small>音に合わせてタップすると、ずれを確かめられます</small>';calShow('calVal','calHit','calFine','calRetry','calBack','calReset');}}
+ calTick();}
+function openCal(mode){initAudio();calTut=mode==='tutorial';$('calLbl').textContent=calTut?'さいごに、タイミング調整':'タイミング調整';if(A.state==='suspended')A.resume();
  $('title').classList.add('hide');$('cal').classList.remove('hide');
- cal={next:A.currentTime+0.4,beats:[],n:0,mode:'check',taps:[],offs:[],timer:setInterval(calTick,40)};calTick();calCheck();}
+ if(cal)clearInterval(cal.timer);cal={step:'ask',next:0,beats:[],n:0,taps:[],offs:[],timer:setInterval(calTick,40)};calStep('ask');}
 function closeCal(){if(cal)clearInterval(cal.timer);cal=null;$('cal').classList.add('hide');if(calTut){calTut=false;openSelect();}else $('title').classList.remove('hide');}
 $('calBtn').addEventListener('click',()=>openCal());
-$('calBack').addEventListener('click',closeCal);
-$('calGo').addEventListener('click',e=>{e.stopPropagation();if(!cal)return;cal.mode='measure';cal.taps=[];cal.from=A.currentTime+CAL_B*0.5;cal.until=A.currentTime+CAL_B*16;
- $('calGo').classList.add('hide');$('calMsg').innerHTML='画面は見ずに、聞こえた音に合わせて<br>8回タップしてください。';$('calHit').textContent='0 / 8';});
+$('calBack').addEventListener('click',e=>{e.stopPropagation();closeCal();});
+$('calYes').addEventListener('click',e=>{e.stopPropagation();if(cal)calStep('measure');});
+$('calRetry').addEventListener('click',e=>{e.stopPropagation();if(cal)calStep('measure');});
 $('calMinus').addEventListener('click',e=>{e.stopPropagation();saveLat(effLat()-0.01);});
 $('calPlus').addEventListener('click',e=>{e.stopPropagation();saveLat(effLat()+0.01);});
-$('calReset').addEventListener('click',e=>{e.stopPropagation();saveLat(null);if(cal)calCheck();});
+$('calReset').addEventListener('click',e=>{e.stopPropagation();saveLat(null);if(cal)calStep(cal.step==='done'?'done':'ask','端末の値にもどしました。');});
 $('cal').addEventListener('pointerdown',e=>{if(!cal||e.target.closest('button'))return;const tt=A.currentTime;
- if(cal.mode==='measure'){if(tt<cal.from)return;
+ if(cal.step==='measure'){if(tt<cal.from)return;
   // a tap belongs to the latest beat already played (a little early is allowed): sound reaches the ears late, never early
   let best=null;for(const b of cal.beats){const d=tt-b;if(d>-0.15&&d<LAT_MAX&&(best==null||d<best))best=d;}
-  if(best!=null)cal.taps.push(best);$('calHit').textContent=cal.taps.length+' / 8';
+  if(best!=null)cal.taps.push(best);$('calVal').textContent=cal.taps.length+' / 8';
   if(cal.taps.length>=8){const v=cal.taps.slice().sort((a,b)=>a-b);saveLat(Math.max(0,(v[3]+v[4])/2));
-   if(calTut){calCheck('合わせました。'+(effLat()>CUT_LAG_MAX?'遅れが大きいので、斬る音は鳴らさずに遊びます。':'')+'<br>あとからタイトルの「タイミング調整」で直せます。');$('calGo').classList.add('hide');$('calBack').textContent='街区をえらぶ';$('calBack').classList.remove('sub');return;}
-   calCheck(effLat()>CUT_LAG_MAX?'測りました。遅れが大きいので、斬る音は鳴らさずに遊びます。<br>タップして、ずれが0に近いか確かめてください。':'測りました。<br>タップして、ずれが0に近いか確かめてください。');}
+   calStep('done','調整しました。'+(effLat()>CUT_LAG_MAX?'<br>遅れが大きいので、斬る音は鳴らさずに遊びます。':'')+(calTut?'<br>あとからタイトルの「タイミング調整」で直せます。':''));}
   return;}
+ if(cal.step!=='done'||calTut)return;
  // checking: the tap against the nearest beat as the game hears it (the beat plus the delay)
  const L=effLat();let d=null;for(const b of cal.beats){const x=tt-(b+L);if(d==null||Math.abs(x)<Math.abs(d))d=x;}
  if(d==null||Math.abs(d)>CAL_B/2)return;if(L<=CUT_LAG_MAX)sfxSwing();
