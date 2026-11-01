@@ -1,11 +1,15 @@
 'use strict';
 // The screen is tall: the city and both lanes sit in the upper part, and the wet street below
 // mirrors it. That lower band is where the thumb rests, so it never hides incoming enemies.
-const W=135,H=300;
+// The width follows the phone (135 to 180 dots, so no black bands at the sides); the extra goes behind the hero,
+// so an enemy is on screen for just as long on every phone.
+const H=300,W0=135;let W=W0,HERO_X=26;
 const cv=document.getElementById('cv'),g=cv.getContext('2d');
 cv.width=W;cv.height=H;
 const refl=document.createElement('canvas');refl.width=W;refl.height=H;const rg=refl.getContext('2d');
-function fit(){const wr=document.getElementById('wrap'),s=Math.min(wr.clientWidth/W,wr.clientHeight/H);cv.style.width=Math.floor(W*s)+'px';cv.style.height=Math.floor(H*s)+'px';}
+function fit(){const wr=document.getElementById('wrap'),w=Math.max(W0,Math.min(180,Math.round(H*wr.clientWidth/Math.max(1,wr.clientHeight))));
+ if(w!==W){W=w;HERO_X=26+W-W0;cv.width=refl.width=W;}
+ const s=Math.min(wr.clientWidth/W,wr.clientHeight/H);cv.style.width=Math.floor(W*s)+'px';cv.style.height=Math.floor(H*s)+'px';}
 addEventListener('resize',fit);fit();
 
 // ---------- song structure ----------
@@ -23,7 +27,7 @@ let ENDING='auto',KEYUP='auto',FROM_LAST=false;
 if(DEV)try{ENDING=localStorage.getItem('iro-ending2')||'auto';KEYUP=localStorage.getItem('iro-keyup')||'auto';}catch(e){}
 // prototype tools: 'play' is the game, 'listen' is the BGM preview (the hero plays by itself, no cut sounds)
 let MODE='play';
-const VERSION='1.0.2';
+const VERSION='1.0.3';
 // past this much output delay (Bluetooth) a cut sound arrives too late to feel like the cut, so cuts stay silent
 const CUT_LAG_MAX=0.1;
 const cutSounds=()=>(MODE==='play'||MODE==='demo')&&lat<=CUT_LAG_MAX;
@@ -87,7 +91,7 @@ let score=0,combo=0,maxCombo=0,nPerf=0,nGood=0,nMiss=0;
 let kickT=-1e9,lane=1,laneFrom=1,laneT=-9,holding=null,shakeT=-1e9,swingT=-9,fx=[],dashUntil=-9,jumpT=-9,slideT=-9,jumpReach=false,slideReach=false;// one move cuts one enemy: its reach ends at the first hit; kick/shake start far in the past, since now() is -9 until audio starts
 let userLat=null;try{const v=localStorage.getItem('iro-lat');if(v!=null)userLat=parseFloat(v);}catch(e){}
 let quietT=null,buildings=[],bEnd=0,parts=[],rings=[],worldSat=0,held=[],kime=null;
-const HERO_X=26,LANE_Y=[112,178],ROAD_END=196,MID_Y=(LANE_Y[0]+LANE_Y[1])/2-8,WIN_P=0.07,WIN_G=0.14,MOVE=0.3;
+const LANE_Y=[112,178],ROAD_END=196,MID_Y=(LANE_Y[0]+LANE_Y[1])/2-8,WIN_P=0.07,WIN_G=0.14,MOVE=0.3;
 let pausedAt=null;// while paused the song's clock stands still
 const now=()=>pausedAt!==null?pausedAt:A?A.currentTime-songStart-lat:-9;
 const curBar=()=>Math.max(0,Math.floor(now()/BAR));
@@ -749,7 +753,7 @@ $('selBack').addEventListener('click',()=>{$('select').classList.add('hide');$('
 function prepareShare(total,clear,perfect){if(!window.MG||!MG.share)return;
  const S=1080,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),F="'DotGothic16',monospace";
  x.fillStyle='#050507';x.fillRect(0,0,S,S);x.imageSmoothingEnabled=false;
- const sy=60,side=W;x.drawImage(cv,0,sy,side,side,0,0,S,S);// the lanes and the skyline, 8 pixels to a dot
+ const sy=60,side=W0;x.drawImage(cv,W-W0,sy,side,side,0,0,S,S);// the lanes and the skyline, 8 pixels to a dot
  const veil=x.createLinearGradient(0,0,0,S);veil.addColorStop(0,'rgba(5,5,7,.55)');veil.addColorStop(.45,'rgba(5,5,7,.35)');veil.addColorStop(1,'rgba(5,5,7,.92)');
  x.fillStyle=veil;x.fillRect(0,0,S,S);x.textAlign='center';
  const fit=(t,y,size,col,maxW=S-140)=>{x.font=size+'px '+F;const w=x.measureText(t).width;if(w>maxW)x.font=(size*maxW/w)+'px '+F;x.fillStyle=col;x.fillText(t,S/2,y);};
