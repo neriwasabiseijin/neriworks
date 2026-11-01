@@ -23,7 +23,7 @@ let ENDING='auto',KEYUP='auto',FROM_LAST=false;
 if(DEV)try{ENDING=localStorage.getItem('iro-ending2')||'auto';KEYUP=localStorage.getItem('iro-keyup')||'auto';}catch(e){}
 // prototype tools: 'play' is the game, 'listen' is the BGM preview (the hero plays by itself, no cut sounds)
 let MODE='play';
-const VERSION='1.0.0';
+const VERSION='1.0.1';
 // past this much output delay (Bluetooth) a cut sound arrives too late to feel like the cut, so cuts stay silent
 const CUT_LAG_MAX=0.1;
 const cutSounds=()=>(MODE==='play'||MODE==='demo')&&lat<=CUT_LAG_MAX;
@@ -638,11 +638,13 @@ function calTick(){if(!cal)return;while(cal.next<A.currentTime+0.2){const bt=cal
   kick(bt,0.9,sfxBus);piano(bt,cal.n%4===0?69:64,0.2,0.12,sfxBus);cal.n++;cal.next+=CAL_B;}
  if(cal.mode==='measure'&&A.currentTime>cal.until){calCheck('うまく測れませんでした。もう一度どうぞ。');}}
 function calCheck(msg){cal.mode='check';cal.taps=[];cal.offs=[];
- $('calMsg').innerHTML=msg||(calTut&&userLat==null?'音は少し遅れて耳に届きます（ワイヤレスイヤホンは特に）。<br>「測る」で、いまの遅れに合わせます。':'音に合わせてタップすると、ずれが出ます。<br>0に近くなるよう −／＋ で合わせてください。');$('calHit').textContent='';$('calGo').classList.remove('hide');showLat();}
-function openCal(mode){initAudio();calTut=mode==='tutorial';$('calLbl').textContent=calTut?'はじめに、タイミング調整':'タイミング調整';$('calBack').textContent=calTut?'つぎへ':'もどる';$('calBack').classList.toggle('sub',!calTut);if(A.state==='suspended')A.resume();
+ $('calMsg').innerHTML=msg||(calTut?'イヤホンなどでは、音が少し遅れて聞こえます。<br>「はじめる」を押して、聞こえた音に合わせて<br>8回タップしてください。':'音に合わせてタップすると、ずれが出ます。<br>0に近くなるよう −／＋ で合わせてください。');$('calHit').textContent='';$('calGo').classList.remove('hide');showLat();}
+// after the tutorial it is one guided step: only 「はじめる」 (eight taps) and a way on; the numbers and −/+ wait on the title's button
+function openCal(mode){initAudio();calTut=mode==='tutorial';$('calLbl').textContent=calTut?'さいごに、音のずれを合わせます':'タイミング調整';
+ $('calGo').textContent=calTut?'はじめる':'測る';$('calBack').textContent=calTut?'とばす':'もどる';$('calBack').classList.add('sub');$('cal').classList.toggle('tutMode',calTut);if(A.state==='suspended')A.resume();
  $('title').classList.add('hide');$('cal').classList.remove('hide');
  cal={next:A.currentTime+0.4,beats:[],n:0,mode:'check',taps:[],offs:[],timer:setInterval(calTick,40)};calTick();calCheck();}
-function closeCal(){if(cal)clearInterval(cal.timer);cal=null;$('cal').classList.add('hide');if(calTut){calTut=false;startTutorial('select');}else $('title').classList.remove('hide');}
+function closeCal(){if(cal)clearInterval(cal.timer);cal=null;$('cal').classList.add('hide');if(calTut){calTut=false;openSelect();}else $('title').classList.remove('hide');}
 $('calBtn').addEventListener('click',()=>openCal());
 $('calBack').addEventListener('click',closeCal);
 $('calGo').addEventListener('click',e=>{e.stopPropagation();if(!cal)return;cal.mode='measure';cal.taps=[];cal.from=A.currentTime+CAL_B*0.5;cal.until=A.currentTime+CAL_B*16;
@@ -656,6 +658,7 @@ $('cal').addEventListener('pointerdown',e=>{if(!cal||e.target.closest('button'))
   let best=null;for(const b of cal.beats){const d=tt-b;if(d>-0.15&&d<LAT_MAX&&(best==null||d<best))best=d;}
   if(best!=null)cal.taps.push(best);$('calHit').textContent=cal.taps.length+' / 8';
   if(cal.taps.length>=8){const v=cal.taps.slice().sort((a,b)=>a-b);saveLat(Math.max(0,(v[3]+v[4])/2));
+   if(calTut){calCheck('合わせました。'+(effLat()>CUT_LAG_MAX?'遅れが大きいので、斬る音は鳴らさずに遊びます。':'')+'<br>あとからタイトルの「タイミング調整」で直せます。');$('calGo').classList.add('hide');$('calBack').textContent='街区をえらぶ';$('calBack').classList.remove('sub');return;}
    calCheck(effLat()>CUT_LAG_MAX?'測りました。遅れが大きいので、斬る音は鳴らさずに遊びます。<br>タップして、ずれが0に近いか確かめてください。':'測りました。<br>タップして、ずれが0に近いか確かめてください。');}
   return;}
  // checking: the tap against the nearest beat as the game hears it (the beat plus the delay)
@@ -693,7 +696,7 @@ function buildEndings(){const box=$('endList');box.innerHTML='';
  $('fromLast').classList.toggle('on',FROM_LAST);}
 function openSelect(){buildList();if(DEV){buildEndings();buildTools();}$('title').classList.add('hide');$('result').classList.add('hide');$('select').classList.remove('hide');}
 function start(sg){initAudio();if(A.state==='suspended')A.resume();applySong(sg||SONG);$('title').classList.add('hide');$('result').classList.add('hide');$('select').classList.add('hide');newGame();$('pauseBtn').classList.toggle('hide',MODE!=='play');}
-$('startBtn').addEventListener('click',()=>{if(tutSeen())openSelect();else openCal('tutorial');});
+$('startBtn').addEventListener('click',()=>{if(tutSeen())openSelect();else startTutorial('select');});
 $('pauseBtn').addEventListener('click',()=>{if(!running||MODE!=='play')return;pauseSong();$('pauseMenu').classList.remove('hide');});
 $('psGo').addEventListener('click',()=>{$('pauseMenu').classList.add('hide');resumeSong();});
 $('psAgain').addEventListener('click',()=>{$('pauseMenu').classList.add('hide');quitSong();start(SONG);});
@@ -727,7 +730,7 @@ function prepareShare(total,clear,perfect){if(!window.MG||!MG.share)return;
 $('shareBtn').addEventListener('click',()=>MG.share.open());
 
 // ---------- tutorial ----------
-// First the timing (the clicks must meet the ears), then one scene per move: a short heading, one line,
+// One scene per move, then (on the first あそぶ) the timing, once the player knows why the beat matters: a short heading, one line,
 // and the real game playing that move by itself on a loop, with a thumb showing the touch.
 const TUT_KEY='iro-tut',TUT_SONG='neon';
 const tutSeen=()=>{try{return !!localStorage.getItem(TUT_KEY);}catch(e){return true;}};
@@ -755,14 +758,14 @@ function demoScene(i){const sc=TUT_SCENES[i];tut.i=i;tut.sc=sc;
  const all=chartFrom({notes:sc.notes,holds:sc.holds||[]});notes=all.filter(n=>!n.hold);holds=all.filter(n=>n.hold);
  buildMax=[0,1].map(k=>Math.max(1,notes.filter(n=>n.sec==='build'&&n.k===k).length));lane=1;
  $('tutDots').innerHTML=TUT_SCENES.map((_,j)=>'<i'+(j===i?' class="on"':'')+'></i>').join('');
- $('tutH').textContent=sc.h;$('tutP').textContent=sc.p;$('tutNext').textContent=i<TUT_SCENES.length-1?'つぎへ':tut.after==='select'?'街区をえらぶ':'おわる';
+ $('tutH').textContent=sc.h;$('tutP').textContent=sc.p;$('tutNext').textContent=i<TUT_SCENES.length-1||tut.after==='select'?'つぎへ':'おわる';
  $('tutPrev').classList.toggle('hide',i===0);demoLoop();}
 function demoLoop(){const sc=tut.sc;seekTo(sc.from);$('thumb').classList.remove('press');lane=1;laneFrom=1;
  if(sc.color){buildStock=buildMax.slice();released=[true,true];districtSat=[1,1];worldSat=targetSat(sc.from*BAR);}}
 function startTutorial(after){tut={i:0,after};MODE='demo';start(SONGS.find(s=>s.id===TUT_SONG)||SONGS[0]);$('tut').classList.remove('hide');demoScene(0);}
 function endTutorial(){if(!tut)return;const after=tut.after;tut=null;$('tut').classList.add('hide');quitSong();MODE='play';
  try{localStorage.setItem(TUT_KEY,'1');}catch(e){}
- if(after==='select')openSelect();else $('title').classList.remove('hide');}
+ if(after==='select')openCal('tutorial');else $('title').classList.remove('hide');}
 $('tutNext').addEventListener('click',()=>{if(!tut)return;if(tut.i<TUT_SCENES.length-1)demoScene(tut.i+1);else endTutorial();});
 $('tutPrev').addEventListener('click',()=>{if(tut&&tut.i>0)demoScene(tut.i-1);});
 $('tutSkip').addEventListener('click',endTutorial);
