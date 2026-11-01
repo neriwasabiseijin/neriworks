@@ -23,7 +23,7 @@ let ENDING='auto',KEYUP='auto',FROM_LAST=false;
 if(DEV)try{ENDING=localStorage.getItem('iro-ending2')||'auto';KEYUP=localStorage.getItem('iro-keyup')||'auto';}catch(e){}
 // prototype tools: 'play' is the game, 'listen' is the BGM preview (the hero plays by itself, no cut sounds)
 let MODE='play';
-const VERSION='1.0.1';
+const VERSION='1.0.2';
 // past this much output delay (Bluetooth) a cut sound arrives too late to feel like the cut, so cuts stay silent
 const CUT_LAG_MAX=0.1;
 const cutSounds=()=>(MODE==='play'||MODE==='demo')&&lat<=CUT_LAG_MAX;
@@ -603,21 +603,46 @@ function finish(){
  ended=true;running=false;stopAmbience();$('pauseBtn').classList.add('hide');
  if(MODE==='listen'||fromEditor){toolsEnded();if(MODE==='listen')return;}
  $('toEdBtn').classList.toggle('hide',!fromEditor);$('edBack').classList.add('hide');
- // the score leads; a full combo (no color lost: every drone cut, every key and lock opened clean) is celebrated under it
  const sat=colorShare(),total=score+Math.round(avgSat()*10000);
  // CLEAR: 8 in 10 cut (drones, keys and locks alike) opens the next district; PERFECT: nothing missed
  const all=notes.length+holds.length,cut=notes.filter(n=>n.done&&n.missAt==null).length+holds.filter(h=>h.done&&(h.mult||0)>0).length;
  const perfect=cut>=all,clear=cut>=all*0.8;
  const i=SONGS.indexOf(SONG),next=SONGS[i+1],opens=clear&&next&&!isOpen(i+1);
- $('rSat').textContent=total.toLocaleString();
- $('rCombo').innerHTML=(perfect?'<span class="fc">PERFECT</span>':clear?'<span class="fc clr">CLEAR</span>':'<span class="nclr">8割斬ると CLEAR　いま '+Math.floor(100*cut/all)+'%</span>')+'最大コンボ <b>'+maxCombo+'</b>'+(opens?'<span class="unl"></span>':'');
- if(opens)$('rCombo').querySelector('.unl').textContent='新しい街区「'+next.name+'」がひらいた';
- $('rDet').textContent='ジャスト '+nPerf+'　ナイス '+nGood+'　ミス '+nMiss;
+ $('rLbl').textContent=SONG.name+'　'+DIFF_JA[DIFF];
  $('rCmt').textContent=sat>=95?'街じゅうが、きみの色になった。':sat>=75?'ネオンが街に戻ってきた。':sat>=50?'まだ灰色の路地が残っている。':'色は、まだ眠っている。';
- saveBest(SONG.id,total,clear,perfect);$('rLbl').textContent=SONG.name+'　'+DIFF_JA[DIFF];
+ $('rStamp').innerHTML=perfect?'<span class="fc pf">PERFECT</span>':clear?'<span class="fc">CLEAR</span>':'<span class="nclr">8割斬ると CLEAR　いま '+Math.floor(100*cut/all)+'%</span>';
+ $('rCombo').innerHTML='最大コンボ <b>'+maxCombo+'</b>';
+ $('rDet').textContent='ジャスト '+nPerf+'　ナイス '+nGood+'　ミス '+nMiss;
+ $('rUnl').textContent=opens?'新しい街区「'+next.name+'」がひらいた':'';
+ for(const id of['rLine2','rUnl'])$(id).classList.toggle('hide',!opens);
+ saveBest(SONG.id,total,clear,perfect);
  try{prepareShare(total,clear,perfect);}catch(e){}
- $('result').classList.remove('hide');
+ $('result').classList.remove('hide');revealResult(total,perfect,clear,opens);
 }
+// The result comes in one piece at a time, each with its own sound: the line and the song, the score counting up,
+// then CLEAR or PERFECT landing, the combo, and a district opening. A tap shows everything at once.
+let reveal=null;
+function revealResult(total,perfect,clear,opens){
+ if(reveal)reveal.stop();const ts=[],R={stop(){ts.forEach(clearTimeout);cancelAnimationFrame(R.raf);}};reveal=R;
+ const on=id=>$(id).classList.add('on'),shown=()=>!$('result').classList.contains('hide'),at=(ms,f)=>ts.push(setTimeout(()=>{if(shown())f();},ms));
+ document.querySelectorAll('#result .rv').forEach(e=>e.classList.remove('on'));$('rFlash').classList.remove('go');$('rSat').textContent='0';
+ const tick=p=>{const t=A.currentTime;thump(t,110+70*p,0.05,0.03);const ng=gainTo(sfxBus),nf=filt('bandpass',900+500*p,1.4,ng);noise(t,0.03,nf);env(ng,t,0.002,0.035,0.025);};
+ const land=v=>{const t=A.currentTime;impact(t,v);thump(t,90,0.2,0.09);};
+ let k=0;
+ at(k,()=>{on('rCmt');on('rLbl');document.querySelectorAll('#result .rLine').forEach(e=>e.classList.add('on'));});
+ at(k+=450,()=>{on('rScore');const t0=performance.now(),D=1300;let last=-1;
+  const step=()=>{const p=Math.min(1,(performance.now()-t0)/D),e=1-Math.pow(1-p,3);$('rSat').textContent=Math.round(total*e).toLocaleString();
+   if(!shown())return;const n=Math.floor(p*22);if(n!==last&&p<1){last=n;tick(e);}if(p<1)R.raf=requestAnimationFrame(step);else land(0.35);};step();});
+ at(k+=1300+350,()=>{on('rStamp');const t=A.currentTime;
+  if(perfect){sfxRelease(true);blade(t,'mid',0.9,true);$('rFlash').classList.add('go');}
+  else if(clear){impact(t,0.6);const c=CH[0];for(const m of c.pad)piano(t,m,1.4,0.09,sfxBus);}
+  else thump(t,80,0.12,0.08);});
+ at(k+=perfect?900:650,()=>{on('rCombo');on('rDet');const t=A.currentTime;thump(t,130,0.16,0.07);blade(t,'low',0.5,false);});
+ if(opens)at(k+=650,()=>{on('rUnl');const t=A.currentTime,c=CH[0];piano(t,c.pad[0]+12,0.6,0.08,sfxBus);piano(t+0.14,c.pad[2]+12,1,0.08,sfxBus);});
+ at(k+=550,()=>{on('rBtns');reveal=null;});
+ R.all=()=>{R.stop();reveal=null;$('rSat').textContent=total.toLocaleString();document.querySelectorAll('#result .rv').forEach(e=>e.classList.add('on'));};}
+$('result').addEventListener('pointerdown',e=>{if(reveal&&!e.target.closest('button'))reveal.all();});
+
 // ---------- timing ----------
 // One value: how late the sound reaches the ears (Bluetooth earphones can be 0.2s or more). A metronome keeps ticking
 // on this screen: each tap shows how far it was from the beat as the game would judge it, so −/+ can be checked on the spot.
